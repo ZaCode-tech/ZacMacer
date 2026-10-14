@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZacMacer - A Revolução Digital da Marcenaria</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    :root {
+      --bg-dark: #120d0a;
+      --bg-card: #1e1713;
+      --accent-wood: #d97706;
+      --accent-hover: #b45309;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --border-color: rgba(217, 119, 6, 0.2);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* HEADER & NAV */
+    header {
+      position: fixed;
+      top: 0;
+      width: 100%;
+      background: rgba(18, 13, 10, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      z-index: 1000;
+      padding: 1.2rem 5%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--accent-wood);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    nav a {
+      color: var(--text-main);
+      text-decoration: none;
+      margin-left: 2rem;
+      font-weight: 500;
+      transition: 0.3s;
+    }
+
+    nav a:hover {
+      color: var(--accent-wood);
+    }
+
+    .btn-cta-nav {
+      background: var(--accent-wood);
+      color: #fff;
+      padding: 0.6rem 1.4rem;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 700;
+      transition: 0.3s;
+    }
+
+    .btn-cta-nav:hover {
+      background: var(--accent-hover);
+      transform: translateY(-2px);
+    }
+
+    /* HERO SECTION */
+    .hero {
+      padding: 10rem 5% 5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 3rem;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    .hero-content {
+      flex: 1;
+    }
+
+    .badge {
+      display: inline-block;
+      background: rgba(217, 119, 6, 0.15);
+      color: var(--accent-wood);
+      padding: 0.4rem 1rem;
+      border-radius: 50px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--border-color);
+    }
+
+    .hero h1 {
+      font-size: 3.2rem;
+      line-height: 1.15;
+      font-weight: 800;
+      margin-bottom: 1.2rem;
+    }
+
+    .hero h1 span {
+      color: var(--accent-wood);
+    }
+
+    .hero p {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      margin-bottom: 2rem;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .btn-primary {
+      background: var(--accent-wood);
+      color: #fff;
+      padding: 0.9rem 2rem;
+      border-radius: 10px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      box-shadow: 0 10px 25px rgba(217, 119, 6, 0.3);
+      transition: 0.3s;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      transform: translateY(-3px);
+    }
+
+    /* MOCKUP DO APLICATIVO */
+    .phone-mockup {
+      width: 320px;
+      height: 640px;
+      background: #000;
+      border-radius: 40px;
+      border: 10px solid #2d241e;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 30px rgba(217, 119, 6, 0.2);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .phone-screen {
+      background: #18120e;
+      flex: 1;
+      padding: 1.5rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .phone-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .sheet-preview {
+      background: #2a2019;
+      height: 220px;
+      border-radius: 12px;
+      border: 2px dashed var(--accent-wood);
+      position: relative;
+      padding: 8px;
+    }
+
+    .cut-block {
+      position: absolute;
+      background: var(--accent-wood);
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 700;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(0,0,0,0.3);
+    }
+
+    .stat-card {
+      background: #251c16;
+      padding: 0.8rem;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+    }
+
+    /* VANTAGENS / RECURSOS */
+    .features {
+      padding: 6rem 5%;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    .section-title {
+      text-align: center;
+      margin-bottom: 4rem;
+    }
+
+    .section-title h2 {
+      font-size: 2.5rem;
+      font-weight: 800;
+    }
+
+    .section-title p {
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+    }
+
+    .grid-features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+    }
+
+    .card-feature {
+      background: var(--bg-card);
+      padding: 2.5rem;
+      border-radius: 16px;
+      border: 1px solid var(--border-color);
+      transition: 0.3s;
+    }
+
+    .card-feature:hover {
+      transform: translateY(-5px);
+      border-color: var(--accent-wood);
+    }
+
+    .card-feature i {
+      font-size: 2.5rem;
+      color: var(--accent-wood);
+      margin-bottom: 1.2rem;
+    }
+
+    .card-feature h3 {
+      font-size: 1.4rem;
+      margin-bottom: 0.8rem;
+    }
+
+    .card-feature p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    /* SEÇÃO PROS / ROI */
+    .roi-section {
+      background: linear-gradient(180deg, var(--bg-dark) 0%, #1f140d 100%);
+      padding: 6rem 5%;
+      border-top: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .roi-container {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3rem;
+      align-items: center;
+    }
+
+    .roi-text {
+      flex: 1;
+      min-width: 300px;
+    }
+
+    .roi-list {
+      list-style: none;
+      margin-top: 1.5rem;
+    }
+
+    .roi-list li {
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      font-size: 1.1rem;
+    }
+
+    .roi-list i {
+      color: #10b981;
+      font-size: 1.3rem;
+    }
+
+    /* CTA FOOTER */
+    .cta-banner {
+      padding: 6rem 5%;
+      text-align: center;
+      background: radial-gradient(circle at center, rgba(217, 119, 6, 0.15) 0%, transparent 70%);
+    }
+
+    .cta-banner h2 {
+      font-size: 2.8rem;
+      margin-bottom: 1rem;
+    }
+
+    footer {
+      padding: 2rem 5%;
+      text-align: center;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 768px) {
+      .hero {
+        flex-direction: column;
+        text-align: center;
+        padding-top: 7rem;
+      }
+      .hero-buttons {
+        justify-content: center;
+      }
+      .phone-mockup {
+        width: 280px;
+        height: 560px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <header>
+    <div class="logo">
+      <i class="fa-solid fa-tree"></i> ZacMacer
+    </div>
+    <nav>
+      <a href="#recursos">Recursos</a>
+      <a href="#pros">Por que o ZacMacer?</a>
+    </nav>
+    <a href="#download" class="btn-cta-nav">Baixar App</a>
+  </header>
+
+  <!-- HERO SECTION -->
+  <section class="hero">
+    <div class="hero-content">
+      <span class="badge"><i class="fa-solid fa-bolt"></i> Otimização Inteligente para Marcenaria</span>
+      <h1>Mais Lucro. Zero Desperdício. Orçamentos em <span>Segundos.</span></h1>
+      <p>O <strong>ZacMacer</strong> foi feito para o marceneiro e montador que querem parar de rasgar dinheiro com chapas cortadas errado e fechar contratos na hora na casa do cliente.</p>
+      
+      <div class="hero-buttons">
+        <a href="#download" class="btn-primary">
+          <i class="fa-brands fa-google-play"></i> Baixar para Android
+        </a>
+      </div>
+    </div>
+
+    <!-- MOCKUP VETORIAL DO APP -->
+    <div class="phone-mockup">
+      <div class="phone-screen">
+        <div class="phone-header">
+          <span><i class="fa-solid fa-layer-group"></i> ZacMacer</span>
+          <span style="color:#10b981;">Chapa 1/2</span>
+        </div>
+
+        <div style="font-size: 0.75rem; color: #9ca3af;">MDF Branco TX 15mm (2750x1850mm)</div>
+
+        <!-- SIMULAÇÃO DO PLANO DE CORTE VISUAL -->
+        <div class="sheet-preview">
+          <div class="cut-block" style="top:5px; left:5px; width:110px; height:90px;">Lat. Esq<br>600x750</div>
+          <div class="cut-block" style="top:5px; left:120px; width:110px; height:90px;">Lat. Dir<br>600x750</div>
+          <div class="cut-block" style="top:100px; left:5px; width:225px; height:80px; background:#b45309;">Base Nicho 1200x500</div>
+          <div class="cut-block" style="top:5px; left:235px; width:55px; height:175px; background:#78350f;">Prat. Int</div>
+        </div>
+
+        <div class="stat-card">
+          <span>Aproveitamento:</span>
+          <strong style="color:#10b981;">94.2%</strong>
+        </div>
+
+        <div class="stat-card">
+          <span>Sobra de MDF:</span>
+          <strong>0.29 m²</strong>
+        </div>
+
+        <button style="background:var(--accent-wood); color:#fff; border:none; padding:10px; border-radius:8px; font-weight:bold; cursor:pointer; margin-top:auto;">
+          <i class="fa-solid fa-file-pdf"></i> Gerar Orçamento PDF
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- RECURSOS E FUNCIONALIDADES -->
+  <section class="features" id="recursos">
+    <div class="section-title">
+      <h2>Criado para a Rotina Real da Oficina</h2>
+      <p>Esqueça planilhas difíceis ou programas pesados de computador.</p>
+    </div>
+
+    <div class="grid-features">
+      <div class="card-feature">
+        <i class="fa-solid fa-border-all"></i>
+        <h3>Plano de Corte Inteligente</h3>
+        <p>Aproveitamento máximo das chapas de MDF/MDP. O algoritmo calcula o encaixe exato com opção de respeitar o sentido do veio da madeira.</p>
+      </div>
+
+      <div class="card-feature">
+        <i class="fa-solid fa-calculator"></i>
+        <h3>Orçamentador Instantâneo</h3>
+        <p>Calcule o preço do móvel na frente do cliente durante a visita. Insira os insumos, margem de lucro e entregue o PDF no WhatsApp na hora.</p>
+      </div>
+
+      <div class="card-feature">
+        <i class="fa-solid fa-boxes-packing"></i>
+        <h3>Controle de Ferragens</h3>
+        <p>Nunca mais vá para a montagem e descubra que faltam dobradiças ou parafusos. Tenha controle exato do estoque de insumos.</p>
+      </div>
+
+      <div class="card-feature">
+        <i class="fa-solid fa-wifi-slash"></i>
+        <h3>Funciona 100% Offline</h3>
+        <p>Projetado para funcionar perfeitamente em galpões, subsolos ou obras sem sinal de internet.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- VANTAGENS E PROS (COPYWRITING DE VENDAS) -->
+  <section class="roi-section" id="pros">
+    <div class="roi-container">
+      <div class="roi-text">
+        <span class="badge">Retorno Sobre o Investimento</span>
+        <h2>O ZacMacer se paga já no seu <span>primeiro serviço</span>.</h2>
+        <p>Economizar apenas meia chapa de MDF por mês paga o aplicativo por um ano inteiro. Veja os benefícios diretos para o seu bolso:</p>
+
+        <ul class="roi-list">
+          <li><i class="fa-solid fa-circle-check"></i> <strong>Poupe dinheiro:</strong> Reduza o desperdício de MDF em até 30%.</li>
+          <li><i class="fa-solid fa-circle-check"></i> <strong>Poupe tempo:</strong> Monte planos de corte em menos de 2 minutos.</li>
+          <li><i class="fa-solid fa-circle-check"></i> <strong>Venda mais rápido:</strong> Envie o orçamento em PDF profissional antes do seu concorrente.</li>
+          <li><i class="fa-solid fa-circle-check"></i> <strong>Aparência Profissional:</strong> Entregue documentos com sua própria logo e marca.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA FINAL -->
+  <section class="cta-banner" id="download">
+    <h2>Pronto para transformar sua marcenaria?</h2>
+    <p style="color: var(--text-muted); margin-bottom: 2rem;">Baixe o ZacMacer agora e leve o controle total do seu negócio no bolso.</p>
+    <a href="#" class="btn-primary" style="font-size: 1.2rem; padding: 1rem 2.5rem;">
+      <i class="fa-brands fa-google-play"></i> Baixar o ZacMacer Agora
+    </a>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <p>&copy; 2026 ZacMacer - Todos os direitos reservados. Desenvolvido para Marceneiros e Montadores.</p>
+  </footer>
+
+</body>
+</html>
