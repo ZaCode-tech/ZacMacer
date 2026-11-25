@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ZacFurniture Studio 3D — Modo Editor de Móveis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <style>
+    body {
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .editor-topbar {
+      height: 64px;
+      background: var(--primary-walnut);
+      color: var(--bg-linen);
+      padding: 0 1.4rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      border-bottom: 1px solid rgba(247, 245, 240, 0.14);
+    }
+
+    .editor-title-input {
+      background: rgba(247, 245, 240, 0.12);
+      border: 1px solid rgba(247, 245, 240, 0.25);
+      color: var(--bg-linen);
+      padding: 0.45rem 0.85rem;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.92rem;
+      width: 310px;
+    }
+
+    .editor-workspace {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 295px 1fr 315px;
+      height: calc(100vh - 64px);
+    }
+
+    .editor-sidebar {
+      background: var(--bg-linen);
+      border-right: 1px solid var(--border-subtle);
+      padding: 1.1rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.1rem;
+    }
+
+    .editor-sidebar.right {
+      border-right: none;
+      border-left: 1px solid var(--border-subtle);
+    }
+
+    .panel-card {
+      background: #FFFFFF;
+      border-radius: 14px;
+      padding: 0.95rem;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .panel-card h4 {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--primary-walnut);
+      margin-bottom: 0.7rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .add-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.45rem;
+    }
+
+    .add-btn {
+      background: var(--bg-linen);
+      border: 1px solid var(--border-subtle);
+      color: var(--primary-walnut);
+      padding: 0.55rem 0.6rem;
+      border-radius: 9px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: left;
+      transition: var(--transition-smooth);
+    }
+
+    .add-btn:hover {
+      background: var(--secondary-terracotta);
+      color: #FFF;
+      border-color: var(--secondary-terracotta);
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0.45rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .field-group label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--primary-walnut-light);
+      margin-bottom: 0.2rem;
+    }
+
+    .field-group input {
+      width: 100%;
+      padding: 0.45rem;
+      border-radius: 7px;
+      border: 1.5px solid var(--border-subtle);
+      background: var(--bg-linen);
+      color: var(--primary-walnut);
+      font-weight: 700;
+      font-size: 0.84rem;
+    }
+
+    .parts-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      max-height: 240px;
+      overflow-y: auto;
+    }
+
+    .part-item {
+      padding: 0.5rem 0.65rem;
+      border-radius: 8px;
+      background: var(--bg-linen);
+      border: 1px solid transparent;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: var(--transition-smooth);
+    }
+
+    .part-item.active {
+      background: var(--secondary-terracotta-soft);
+      border-color: var(--secondary-terracotta);
+      color: var(--primary-walnut);
+      font-weight: 800;
+    }
+
+    .color-swatches {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0.45rem;
+      margin-top: 0.4rem;
+    }
+
+    .swatch {
+      height: 30px;
+      border-radius: 8px;
+      border: 2px solid rgba(74, 53, 37, 0.25);
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .swatch:hover {
+      transform: scale(1.1);
+    }
+
+    .editor-viewport {
+      position: relative;
+      background: radial-gradient(circle at 50% 45%, #FFFFFF 0%, #E7E0D2 100%);
+    }
+
+    #editor-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .viewport-hud-top {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      right: 14px;
+      display: flex;
+      justify-content: space-between;
+      pointer-events: none;
+    }
+
+    .hud-pill {
+      pointer-events: auto;
+      background: rgba(247, 245, 240, 0.92);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border-subtle);
+      padding: 0.45rem 0.85rem;
+      border-radius: 10px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    @media (max-width: 1024px) {
+      body { overflow: auto; height: auto; }
+      .editor-workspace { grid-template-columns: 1fr; height: auto; }
+      .editor-viewport { height: 420px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Barra Superior do Estúdio -->
+  <header class="editor-topbar">
+    <div style="display:flex; align-items:center; gap:0.85rem;">
+      <div class="brand-mark" style="width:36px; height:36px; font-size:0.95rem;">ZF</div>
+      <div>
+        <strong style="font-size:0.98rem;">ZacFurniture Studio 3D</strong>
+        <span style="display:block; font-size:0.7rem; color:#F3D6C8;">Editor Paramétrico de Móveis</span>
+      </div>
+      <input type="text" id="project-name-input" class="editor-title-input" value="Projeto Personalizado" />
+    </div>
+
+    <div style="display:flex; align-items:center; gap:0.6rem;">
+      <button id="btn-undo" class="btn btn-outline btn-sm">↩ Desfazer</button>
+      <button id="btn-redo" class="btn btn-outline btn-sm">↪ Refazer</button>
+      <a href="index.html" class="btn btn-outline btn-sm">Cancelar</a>
+      <button id="btn-save-return" class="btn btn-moss btn-sm">💾 Salvar Projeto e Voltar</button>
+    </div>
+  </header>
+
+  <main class="editor-workspace">
+    <!-- Coluna Esquerda: Dimensões Globais + Acrescentar Módulos -->
+    <aside class="editor-sidebar">
+      <div class="panel-card">
+        <h4>Dimensões Gerais (cm)</h4>
+        <div class="field-row">
+          <div class="field-group">
+            <label>Largura</label>
+            <input type="number" id="global-w" min="40" max="400" step="5" />
+          </div>
+          <div class="field-group">
+            <label>Altura</label>
+            <input type="number" id="global-h" min="30" max="300" step="5" />
+          </div>
+          <div class="field-group">
+            <label>Profund.</label>
+            <input type="number" id="global-d" min="20" max="150" step="5" />
+          </div>
+        </div>
+        <button id="btn-scale-overall" class="btn btn-terracotta btn-sm" style="width:100%;">
+          Redimensionar Móvel Proporcionalmente
+        </button>
+      </div>
+
+      <div class="panel-card">
+        <h4>Acrescentar Componentes</h4>
+        <div class="add-grid">
+          <button class="add-btn" onclick="addComponent('prateleira_tras')">+ Prateleira Atrás</button>
+          <button class="add-btn" onclick="addComponent('prateleira_frente')">+ Prateleira Frente</button>
+          <button class="add-btn" onclick="addComponent('divisoria')">+ Divisória Interna</button>
+          <button class="add-btn" onclick="addComponent('ripado')">+ Painel Ripado</button>
+          <button class="add-btn" onclick="addComponent('porta')">+ Porta c/ Dobradiça</button>
+          <button class="add-btn" onclick="addComponent('gaveta')">+ Gaveta Frontal</button>
+          <button class="add-btn" onclick="addComponent('led_frio')">+ LED Frio 6500K</button>
+          <button class="add-btn" onclick="addComponent('led_quente')">+ LED Quente 3000K</button>
+        </div>
+      </div>
+
+      <div class="panel-card" style="flex:1;">
+        <h4>
+          <span>Peças do Projeto</span>
+          <span id="parts-counter" style="color:var(--secondary-terracotta);">0</span>
+        </h4>
+        <div id="parts-list" class="parts-list"></div>
+      </div>
+    </aside>
+
+    <!-- Viewport 3D Central -->
+    <section class="editor-viewport">
+      <div class="viewport-hud-top">
+        <div class="hud-pill">
+          <span>🖱️ Clique em qualquer peça no 3D para selecionar, pintar ou remover</span>
+        </div>
+
+        <div class="hud-pill">
+          <label style="cursor:pointer; display:flex; align-items:center; gap:0.4rem;">
+            <input type="checkbox" id="editor-detailed-toggle" />
+            🔩 Parafusos & Dobradiças
+          </label>
+        </div>
+      </div>
+
+      <canvas id="editor-canvas"></canvas>
+    </section>
+
+    <!-- Coluna Direita: Inspetor da Peça Selecionada (Aumentar, Diminuir, Pintar, Remover) -->
+    <aside class="editor-sidebar right">
+      <div id="inspector-empty" class="panel-card">
+        <h4>Inspetor de Peça</h4>
+        <p style="font-size:0.82rem; color:var(--primary-walnut-light);">
+          Selecione uma peça na lista à esquerda ou clique diretamente sobre o móvel 3D para alterar medidas, posição, pintura ou excluir.
+        </p>
+      </div>
+
+      <div id="inspector-active" class="panel-card" style="display:none;">
+        <h4>
+          <span id="sel-part-title">Peça Selecionada</span>
+        </h4>
+
+        <div style="margin-bottom:0.65rem;">
+          <label style="font-size:0.74rem; font-weight:700;">Nome da Peça</label>
+          <input type="text" id="sel-name" style="width:100%; padding:0.45rem; border-radius:7px; border:1.5px solid var(--border-subtle); background:var(--bg-linen); font-weight:700;" />
+        </div>
+
+        <label style="font-size:0.74rem; font-weight:700; display:block; margin-bottom:0.25rem;">Aumentar / Diminuir Peça (cm)</label>
+        <div class="field-row">
+          <div class="field-group">
+            <label>Larg. (W)</label>
+            <input type="number" id="sel-w" step="1" min="1" />
+          </div>
+          <div class="field-group">
+            <label>Alt. (H)</label>
+            <input type="number" id="sel-h" step="1" min="1" />
+          </div>
+          <div class="field-group">
+            <label>Prof. (D)</label>
+            <input type="number" id="sel-d" step="1" min="1" />
+          </div>
+        </div>
+
+        <label style="font-size:0.74rem; font-weight:700; display:block; margin:0.5rem 0 0.25rem;">Posição Espacial (cm)</label>
+        <div class="field-row">
+          <div class="field-group">
+            <label>Eixo X</label>
+            <input type="number" id="sel-x" step="1" />
+          </div>
+          <div class="field-group">
+            <label>Eixo Y</label>
+            <input type="number" id="sel-y" step="1" />
+          </div>
+          <div class="field-group">
+            <label>Eixo Z</label>
+            <input type="number" id="sel-z" step="1" />
+          </div>
+        </div>
+
+        <div style="margin-top:0.85rem;">
+          <label style="font-size:0.74rem; font-weight:700;">Pintar Peça (Paleta & Madeiras)</label>
+          <div class="color-swatches">
+            <div class="swatch" style="background:#7A563A;" title="Nogueira Natural" onclick="paintSelected('#7A563A')"></div>
+            <div class="swatch" style="background:#4A3525;" title="Marrom Café" onclick="paintSelected('#4A3525')"></div>
+            <div class="swatch" style="background:#C86D51;" title="Terracota / Cobre" onclick="paintSelected('#C86D51')"></div>
+            <div class="swatch" style="background:#3D5245;" title="Verde-Musgo" onclick="paintSelected('#3D5245')"></div>
+            <div class="swatch" style="background:#F7F5F0;" title="Off-White Linho" onclick="paintSelected('#F7F5F0')"></div>
+            <div class="swatch" style="background:#B88E65;" title="Carvalho Mel" onclick="paintSelected('#B88E65')"></div>
+            <div class="swatch" style="background:#2A2623;" title="Preto Grafite" onclick="paintSelected('#2A2623')"></div>
+            <div class="swatch" style="background:#8D99AE;" title="Cinza Urbano" onclick="paintSelected('#8D99AE')"></div>
+            <div class="swatch" style="background:#D9C5A0;" title="Freijó Claro" onclick="paintSelected('#D9C5A0')"></div>
+            <input type="color" id="custom-color-picker" title="Cor Livre" style="width:100%; height:30px; border:none; background:none; cursor:pointer;" />
+          </div>
+        </div>
+
+        <div style="margin-top:1rem; display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+          <button id="btn-duplicate-part" class="btn btn-outline btn-sm">Duplicar Peça</button>
+          <button id="btn-delete-part" class="btn btn-terracotta btn-sm">🗑 Remover Peça</button>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <h4>Resumo Técnico</h4>
+        <p id="editor-bom-summary" style="font-size:0.8rem; color:var(--primary-walnut-light); line-height:1.5;"></p>
+      </div>
+    </aside>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="furniture-engine.js"></script>
+  <script>
+    const STORAGE_KEY = 'zacfurniture_active_project';
+    let project = null;
+    let selectedPartId = null;
+    let detailedMode = false;
+    const undoStack = [];
+    const redoStack = [];
+
+    // Three.js Setup
+    const canvas = document.getElementById('editor-canvas');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(42, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
+    camera.position.set(2.2, 1.5, 2.4);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.target.set(0, 0.5, 0);
+
+    scene.add(new THREE.HemisphereLight(0xfffaf0, 0x8c735b, 0.95));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
+    dirLight.position.set(3, 5, 4);
+    scene.add(dirLight);
+
+    const grid = new THREE.GridHelper(6, 24, 0xc86d51, 0xd4cbbd);
+    grid.material.opacity = 0.4;
+    grid.material.transparent = true;
+    scene.add(grid);
+
+    let furnitureGroup = new THREE.Group();
+    scene.add(furnitureGroup);
+
+    function resize() {
+      const p = canvas.parentElement;
+      renderer.setSize(p.clientWidth, p.clientHeight, false);
+      camera.aspect = p.clientWidth / p.clientHeight;
+      camera.updateProjectionMatrix();
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    function loop() {
+      requestAnimationFrame(loop);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    loop();
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2800);
+    }
+
+    function pushHistory() {
+      undoStack.push(JSON.stringify(project));
+      if (undoStack.length > 30) undoStack.shift();
+      redoStack.length = 0;
+    }
+
+    function rebuildScene() {
+      scene.remove(furnitureGroup);
+      const built = ZacEngine.createFurnitureGroup(project, {
+        detailedMode,
+        selectedPartId
+      });
+      furnitureGroup = built.group;
+      scene.add(furnitureGroup);
+
+      // Atualiza lista de peças
+      const listEl = document.getElementById('parts-list');
+      document.getElementById('parts-counter').textContent = project.parts.length;
+      listEl.innerHTML = project.parts.map(p => `
+        <div class="part-item ${p.id === selectedPartId ? 'active' : ''}" onclick="selectPart('${p.id}')">
+          <span>${p.name}</span>
+          <span style="display:inline-block; width:12px; height:12px; border-radius:4px; background:${p.color}; border:1px solid #4A3525;"></span>
+        </div>
+      `).join('');
+
+      // Atualiza resumo técnico
+      const bom = ZacEngine.calculateProjectBOM(project);
+      document.getElementById('editor-bom-summary').innerHTML = `
+        <strong>${project.parts.length}</strong> componentes estruturais<br/>
+        <strong>${bom.sheetsNeeded}</strong> chapa(s) MDF • <strong>${bom.screwCount}</strong> parafusos • <strong>${bom.hingeCount}</strong> dobradiças<br/>
+        Estimativa: <strong style="color:var(--accent-moss);">R$ ${bom.estimatedPrice.toLocaleString('pt-BR')}</strong>
+      `;
+
+      syncInspector();
+    }
+
+    window.selectPart = function (id) {
+      selectedPartId = id;
+      rebuildScene();
+    };
+
+    function syncInspector() {
+      const part = project.parts.find(p => p.id === selectedPartId);
+      const emptyBox = document.getElementById('inspector-empty');
+      const activeBox = document.getElementById('inspector-active');
+
+      if (!part) {
+        emptyBox.style.display = 'block';
+        activeBox.style.display = 'none';
+        return;
+      }
+
+      emptyBox.style.display = 'none';
+      activeBox.style.display = 'block';
+      document.getElementById('sel-part-title').textContent = part.name;
+      document.getElementById('sel-name').value = part.name;
+      document.getElementById('sel-w').value = Math.round(part.w * 10) / 10;
+      document.getElementById('sel-h').value = Math.round(part.h * 10) / 10;
+      document.getElementById('sel-d').value = Math.round(part.d * 10) / 10;
+      document.getElementById('sel-x').value = Math.round(part.x * 10) / 10;
+      document.getElementById('sel-y').value = Math.round(part.y * 10) / 10;
+      document.getElementById('sel-z').value = Math.round(part.z * 10) / 10;
+      document.getElementById('custom-color-picker').value = part.color.startsWith('#') ? part.color : '#7A563A';
+    }
+
+    // Seleção por clique no 3D (Raycaster)
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    let pointerDownPos = { x: 0, y: 0 };
+
+    canvas.addEventListener('pointerdown', (e) => {
+      pointerDownPos = { x: e.clientX, y: e.clientY };
+    });
+
+    canvas.addEventListener('pointerup', (e) => {
+      const dist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
+      if (dist > 5) return; // Ignora se foi arraste de câmera
+
+      const rect = canvas.getBoundingClientRect();
+      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(furnitureGroup.children, true);
+      if (intersects.length > 0) {
+        const hit = intersects.find(i => i.object.userData && i.object.userData.partId);
+        if (hit) {
+          selectPart(hit.object.userData.partId);
+        }
+      }
+    });
+
+    // Inputs do Inspetor
+    ['sel-name', 'sel-w', 'sel-h', 'sel-d', 'sel-x', 'sel-y', 'sel-z'].forEach(fieldId => {
+      document.getElementById(fieldId).addEventListener('change', () => {
+        const part = project.parts.find(p => p.id === selectedPartId);
+        if (!part) return;
+        pushHistory();
+        part.name = document.getElementById('sel-name').value || part.name;
+        part.w = Math.max(1, parseFloat(document.getElementById('sel-w').value) || part.w);
+        part.h = Math.max(1, parseFloat(document.getElementById('sel-h').value) || part.h);
+        part.d = Math.max(1, parseFloat(document.getElementById('sel-d').value) || part.d);
+        part.x = parseFloat(document.getElementById('sel-x').value) || 0;
+        part.y = parseFloat(document.getElementById('sel-y').value) || 0;
+        part.z = parseFloat(document.getElementById('sel-z').value) || 0;
+        rebuildScene();
+      });
+    });
+
+    window.paintSelected = function (hex) {
+      const part = project.parts.find(p => p.id === selectedPartId);
+      if (!part) return;
+      pushHistory();
+      part.color = hex;
+      rebuildScene();
+    };
+
+    document.getElementById('custom-color-picker').addEventListener('input', (e) => {
+      paintSelected(e.target.value);
+    });
+
+    // Acrescentar Componentes
+    window.addComponent = function (type) {
+      pushHistory();
+      const W = project.width || 180;
+      const H = project.height || 95;
+      const D = project.depth || 60;
+      const newId = `part_${Date.now().toString(36)}`;
+
+      const templates = {
+        prateleira_tras: {
+          id: newId, name: 'Prateleira Traseira Extra', role: 'prateleira_tras',
+          x: 0, y: H * 0.55, z: -D * 0.24, w: W - 4, h: 2, d: D * 0.45, color: ZacEngine.DEFAULT_WOOD
+        },
+        prateleira_frente: {
+          id: newId, name: 'Prateleira Frontal Extra', role: 'prateleira_frente',
+          x: 0, y: H * 0.45, z: D * 0.2, w: W - 4, h: 2, d: D * 0.45, color: ZacEngine.DEFAULT_WOOD
+        },
+        divisoria: {
+          id: newId, name: 'Divisória Vertical Extra', role: 'divisoria',
+          x: 0, y: H * 0.52, z: 0, w: 2, h: H - 14, d: D - 6, color: ZacEngine.DEFAULT_WOOD
+        },
+        ripado: {
+          id: newId, name: 'Módulo Ripado Adicional', role: 'ripado',
+          x: 0, y: H * 0.52, z: D / 2 - 1, w: W * 0.5, h: H - 14, d: 2.2, color: ZacEngine.DEFAULT_WOOD, slatted: true
+        },
+        porta: {
+          id: newId, name: 'Porta com Dobradiças', role: 'porta',
+          x: -W * 0.24, y: H * 0.52, z: D / 2 - 0.8, w: W * 0.46, h: H - 14, d: 1.8, color: ZacEngine.SECONDARY_LINEN, hingeSide: 'left'
+        },
+        gaveta: {
+          id: newId, name: 'Gaveta Adicional', role: 'gaveta',
+          x: 0, y: H * 0.72, z: D / 2 - 0.8, w: W * 0.45, h: 16, d: 1.8, color: ZacEngine.SECONDARY_LINEN
+        },
+        led_frio: {
+          id: newId, name: 'Fita LED Frio 6500K', role: 'led',
+          x: 0, y: H - 3, z: D / 2 - 0.5, w: W - 6, h: 1.2, d: 1.4, color: '#E3F6FF', ledMode: 'frio'
+        },
+        led_quente: {
+          id: newId, name: 'Fita LED Quente 3000K', role: 'led',
+          x: 0, y: H - 3, z: D / 2 - 0.5, w: W - 6, h: 1.2, d: 1.4, color: '#FFD58C', ledMode: 'quente'
+        }
+      };
+
+      const item = templates[type];
+      if (item) {
+        project.parts.push(item);
+        selectedPartId = item.id;
+        rebuildScene();
+        showToast(`${item.name} adicionada ao projeto!`);
+      }
+    };
+
+    // Remover & Duplicar
+    document.getElementById('btn-delete-part').addEventListener('click', () => {
+      if (!selectedPartId) return;
+      pushHistory();
+      project.parts = project.parts.filter(p => p.id !== selectedPartId);
+      selectedPartId = null;
+      rebuildScene();
+      showToast('Peça removida.');
+    });
+
+    document.getElementById('btn-duplicate-part').addEventListener('click', () => {
+      const orig = project.parts.find(p => p.id === selectedPartId);
+      if (!orig) return;
+      pushHistory();
+      const copy = {
+        ...orig,
+        id: `part_${Date.now().toString(36)}`,
+        name: `${orig.name} (Cópia)`,
+        y: orig.y + 12
+      };
+      project.parts.push(copy);
+      selectedPartId = copy.id;
+      rebuildScene();
+      showToast('Peça duplicada!');
+    });
+
+    // Redimensionamento Global Proporcional
+    document.getElementById('btn-scale-overall').addEventListener('click', () => {
+      const newW = parseFloat(document.getElementById('global-w').value);
+      const newH = parseFloat(document.getElementById('global-h').value);
+      const newD = parseFloat(document.getElementById('global-d').value);
+      if (!newW || !newH || !newD) return;
+
+      pushHistory();
+      const sx = newW / project.width;
+      const sy = newH / project.height;
+      const sz = newD / project.depth;
+
+      project.parts.forEach(p => {
+        p.x *= sx;
+        p.y *= sy;
+        p.z *= sz;
+        if (p.role !== 'lateral' && p.role !== 'divisoria') p.w *= sx;
+        if (p.role !== 'tampo' && p.role !== 'base' && p.role !== 'prateleira_tras' && p.role !== 'prateleira_frente') p.h *= sy;
+        if (p.role !== 'porta' && p.role !== 'gaveta' && p.role !== 'ripado') p.d *= sz;
+      });
+
+      project.width = newW;
+      project.height = newH;
+      project.depth = newD;
+      rebuildScene();
+      showToast(`Móvel redimensionado para ${newW} × ${newH} × ${newD} cm!`);
+    });
+
+    // Undo / Redo
+    document.getElementById('btn-undo').addEventListener('click', () => {
+      if (undoStack.length === 0) return;
+      redoStack.push(JSON.stringify(project));
+      project = JSON.parse(undoStack.pop());
+      rebuildScene();
+    });
+
+    document.getElementById('btn-redo').addEventListener('click', () => {
+      if (redoStack.length === 0) return;
+      undoStack.push(JSON.stringify(project));
+      project = JSON.parse(redoStack.pop());
+      rebuildScene();
+    });
+
+    // Modo Detalhado no Editor
+    document.getElementById('editor-detailed-toggle').addEventListener('change', (e) => {
+      detailedMode = e.target.checked;
+      rebuildScene();
+    });
+
+    // Salvar e Voltar para o Site Principal
+    document.getElementById('btn-save-return').addEventListener('click', () => {
+      project.name = document.getElementById('project-name-input').value.trim() || project.name;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(project));
+      window.location.href = 'index.html?fromEditor=1';
+    });
+
+    // Carregar Projeto Ativo
+    (function initEditor() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        project = JSON.parse(saved);
+      } else {
+        project = ZacEngine.parseNaturalPrompt(
+          'Quero criar um balcão ripado de 180cm com iluminação LED Frio, com divisória e pratileira atras'
+        );
+      }
+      document.getElementById('project-name-input').value = project.name;
+      document.getElementById('global-w').value = project.width;
+      document.getElementById('global-h').value = project.height;
+      document.getElementById('global-d').value = project.depth;
+      rebuildScene();
+    })();
+  </script>
+</body>
+</html>
