@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="./style.css" />
   <script type="importmap">
   {
     "imports": {
@@ -55,7 +55,7 @@
   </div>
 
   <main>
-    <!-- HERO + PALCO INTERATIVO DE MONTAGEM DE MÓVEIS -->
+    <!-- HERO + PALCO INTERATIVO 3D DE MONTAGEM -->
     <section id="inicio" class="hero-section">
       <div class="hero-grid">
         <!-- Coluna Editorial -->
@@ -78,7 +78,7 @@
             <a href="#projetos" class="btn btn-glass btn-lg">Ver projetos</a>
           </div>
 
-          <!-- Seletor rápido de peças para montagem -->
+          <!-- Seletor de móveis -->
           <div class="furniture-selector" id="planejador">
             <span class="selector-label">Escolha o móvel para acompanhar a montagem:</span>
             <div class="selector-pills" role="tablist" aria-label="Modelos de móveis">
@@ -98,68 +98,68 @@
         <!-- Coluna Interativa 3D -->
         <div class="stage-wrapper reveal-up delay-1">
           <div class="stage-card">
-            <!-- Etiqueta superior direita -->
-            <div class="stage-top-tag">
-              <span class="dot"></span>
-              <span id="currentFinishLabel">Espresso &amp; Quartzo Aveia</span>
-            </div>
-
-            <!-- Dica discreta de interação -->
-            <div class="stage-hint" id="stageHint">
-              Arraste para girar · Role para aproximar
-            </div>
-
-            <!-- Canvas 3D Realista -->
-            <div id="canvasContainer" class="canvas-container" aria-label="Visualização interativa da montagem do móvel em madeira"></div>
-
-            <!-- Barra de controle da montagem -->
-            <div class="assembly-bar">
-              <button class="icon-action-btn" id="replayBtn" title="Montar novamente">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-                <span>Montar</span>
-              </button>
-
-              <div class="slider-group">
-                <label for="explodeRange">Encaixe</label>
-                <input type="range" id="explodeRange" min="0" max="100" value="0" aria-label="Controlar abertura das peças de madeira" />
+            <div class="stage-viewport">
+              <div class="stage-top-tag">
+                <span class="dot"></span>
+                <span id="currentFinishLabel">Espresso &amp; Quartzo Aveia</span>
               </div>
 
-              <button class="icon-action-btn" id="doorsBtn" title="Abrir ou fechar portas e gavetas">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 3v18"/><path d="M9 12h.01"/><path d="M15 12h.01"/></svg>
-                <span id="doorsBtnText">Abrir portas</span>
-              </button>
+              <div class="stage-hint" id="stageHint">
+                Arraste para girar · Role ou pince para aproximar
+              </div>
+
+              <!-- Canvas 3D -->
+              <div id="canvasContainer" class="canvas-container" aria-label="Visualização 3D da montagem do móvel em madeira"></div>
             </div>
 
-            <!-- Cartões flutuantes inferiores -->
-            <div class="floating-cards">
-              <!-- Cartão esquerdo: Etapas da Marcenaria -->
-              <div class="glass-subcard steps-card">
-                <div class="subcard-header">
-                  <span><i class="dot"></i> Etapas da peça</span>
-                  <span class="muted" id="assemblyStatus">Montado</span>
+            <!-- Controles da Montagem -->
+            <div class="stage-controls-panel">
+              <div class="assembly-bar">
+                <button class="icon-action-btn" id="replayBtn" title="Montar novamente">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                  <span>Montar</span>
+                </button>
+
+                <div class="slider-group">
+                  <label for="explodeRange">Encaixe</label>
+                  <input type="range" id="explodeRange" min="0" max="100" value="0" aria-label="Controlar abertura das peças de madeira" />
                 </div>
-                <div class="steps-grid">
-                  <button class="step-chip active" data-stage="0.35">
-                    <small>Passo 01</small>
-                    <strong>Caixa &amp; Base</strong>
-                  </button>
-                  <button class="step-chip" data-stage="1">
-                    <small>Passo 02</small>
-                    <strong>Acabamento</strong>
-                  </button>
-                </div>
-                <button class="btn btn-sage btn-block" id="animateBuildBtn">
-                  Ver montagem completa
+
+                <button class="icon-action-btn" id="doorsBtn" title="Abrir ou fechar portas e gavetas">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 3v18"/><path d="M9 12h.01"/><path d="M15 12h.01"/></svg>
+                  <span id="doorsBtnText">Abrir portas</span>
                 </button>
               </div>
 
-              <!-- Cartão direito: Acabamento da Madeira -->
-              <div class="glass-subcard swatch-card">
-                <span class="swatch-title">Acabamento</span>
-                <div class="swatch-row" role="radiogroup" aria-label="Cor e acabamento da madeira">
-                  <button class="swatch-btn active" data-finish="espresso" style="--swatch-color: #2B1D16;" aria-label="Espresso Nogueira" title="Espresso — Nogueira"></button>
-                  <button class="swatch-btn" data-finish="oat" style="--swatch-color: #E9DFCF;" aria-label="Oat Aveia" title="Oat — Madeira Clara"></button>
-                  <button class="swatch-btn" data-finish="sage" style="--swatch-color: #9CAF88;" aria-label="Sage Green Sálvia" title="Sage Green — Laca Sálvia"></button>
+              <!-- Cartões flutuantes inferiores -->
+              <div class="floating-cards">
+                <div class="glass-subcard steps-card">
+                  <div class="subcard-header">
+                    <span><i class="dot"></i> Etapas da peça</span>
+                    <span class="muted" id="assemblyStatus">Montado</span>
+                  </div>
+                  <div class="steps-grid">
+                    <button class="step-chip active" data-stage="0.35">
+                      <small>Passo 01</small>
+                      <strong>Caixa &amp; Base</strong>
+                    </button>
+                    <button class="step-chip" data-stage="1">
+                      <small>Passo 02</small>
+                      <strong>Acabamento</strong>
+                    </button>
+                  </div>
+                  <button class="btn btn-sage btn-block" id="animateBuildBtn">
+                    Ver montagem completa
+                  </button>
+                </div>
+
+                <div class="glass-subcard swatch-card">
+                  <span class="swatch-title">Acabamento</span>
+                  <div class="swatch-row" role="radiogroup" aria-label="Cor e acabamento da madeira">
+                    <button class="swatch-btn active" data-finish="espresso" style="--swatch-color: #2B1D16;" aria-label="Espresso Nogueira" title="Espresso — Nogueira"></button>
+                    <button class="swatch-btn" data-finish="oat" style="--swatch-color: #E9DFCF;" aria-label="Oat Aveia" title="Oat — Madeira Clara"></button>
+                    <button class="swatch-btn" data-finish="sage" style="--swatch-color: #9CAF88;" aria-label="Sage Green Sálvia" title="Sage Green — Laca Sálvia"></button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -168,7 +168,7 @@
       </div>
     </section>
 
-    <!-- SEÇÃO: A NOBREZA DA MADEIRA E DO TRABALHO ARTESANAL -->
+    <!-- SEÇÃO: O OFÍCIO DA MARCENARIA -->
     <section id="oficina" class="craft-section">
       <div class="section-header reveal-up">
         <span class="meta-pill"><i class="dot"></i> O ofício da marcenaria</span>
@@ -202,7 +202,7 @@
       </div>
     </section>
 
-    <!-- SEÇÃO: OBRAS REALIZADAS -->
+    <!-- SEÇÃO: PROJETOS EXECUTADOS -->
     <section id="projetos" class="works-section">
       <div class="section-header reveal-up">
         <span class="meta-pill"><i class="dot"></i> Projetos executados</span>
@@ -212,7 +212,7 @@
       <div class="works-grid">
         <article class="work-card reveal-up" data-select-model="vanity">
           <div class="work-media">
-            <img src="assets/gabinete-banheiro.jpg" alt="Gabinete suspenso em madeira nogueira com bancada branca" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+            <img src="./assets/gabinete-banheiro.jpg" alt="Gabinete suspenso em madeira nogueira com bancada branca" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
             <div class="work-fallback wood-pattern-1">
               <span>Gabinete em Nogueira</span>
             </div>
@@ -227,7 +227,7 @@
 
         <article class="work-card reveal-up delay-1" data-select-model="counter">
           <div class="work-media">
-            <img src="assets/balcao-ripado.jpg" alt="Balcão ripado em madeira com iluminação LED quente" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+            <img src="./assets/balcao-ripado.jpg" alt="Balcão ripado em madeira com iluminação LED quente" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
             <div class="work-fallback wood-pattern-2">
               <span>Balcão Ripado LED</span>
             </div>
@@ -242,7 +242,7 @@
 
         <article class="work-card reveal-up delay-2" data-select-model="kitchen">
           <div class="work-media">
-            <img src="assets/bancada-gourmet.jpg" alt="Bancada de cozinha sob medida em madeira e tampo branco" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+            <img src="./assets/bancada-gourmet.jpg" alt="Bancada de cozinha sob medida em madeira e tampo branco" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
             <div class="work-fallback wood-pattern-3">
               <span>Bancada &amp; Roupeiro</span>
             </div>
@@ -257,7 +257,7 @@
       </div>
     </section>
 
-    <!-- SEÇÃO: CONTATO / AGENDAR VISITA -->
+    <!-- SEÇÃO: CONTATO -->
     <section id="contato" class="contact-section">
       <div class="contact-card reveal-up">
         <div class="contact-info">
@@ -343,6 +343,6 @@
     </div>
   </footer>
 
-  <script type="module" src="script.js"></script>
+  <script type="module" src="./script.js"></script>
 </body>
 </html>
