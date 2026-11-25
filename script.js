@@ -1,6 +1,14 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { CATALOG, specFromItem, detectCustom } from './catalog.js';
+import { computeBOM, countScrews } from './bom.js';
+
+function boxGeo(w, h, d) {
+  const m = Math.min(w, h, d);
+  return m < 0.012 ? new THREE.BoxGeometry(w, h, d) : new RoundedBoxGeometry(w, h, d, 2, Math.min(0.0025, m * 0.3));
+}
 
 /* ==========================================================================
    1. ACABAMENTOS DE MADEIRA & BALDES DE TINTA (PBR)
@@ -129,87 +137,80 @@ const PAINT_BUCKETS = [
   }
 ];
 
-function createWoodTexturesFromConfig(cfg) {
-  const size = 512;
-
-  const colorCanvas = document.createElement('canvas');
-  colorCanvas.width = size;
-  colorCanvas.height = size;
-  const ctx = colorCanvas.getContext('2d');
-
-  const bumpCanvas = document.createElement('canvas');
-  bumpCanvas.width = size;
-  bumpCanvas.height = size;
-  const bCtx = bumpCanvas.getContext('2d');
-
-  ctx.fillStyle = cfg.baseColor;
-  ctx.fillRect(0, 0, size, size);
-
-  bCtx.fillStyle = '#808080';
-  bCtx.fillRect(0, 0, size, size);
-
-  const lineCount = cfg.isLacquer ? 75 : 210;
-  for (let i = 0; i < lineCount; i++) {
-    const xBase = (i / lineCount) * size;
-    const waveFreq = 0.008 + (i % 7) * 0.0015;
-    const waveAmp = cfg.isLacquer ? 2.0 : 8 + (i % 5) * 2.2;
-    const phase = i * 0.37;
-
-    ctx.beginPath();
-    bCtx.beginPath();
-
-    for (let y = 0; y <= size; y += 8) {
-      const offset =
-        Math.sin(y * waveFreq + phase) * waveAmp +
-        Math.cos(y * waveFreq * 0.45 - phase) * (waveAmp * 0.4);
-      const x = xBase + offset;
-      if (y === 0) {
-        ctx.moveTo(x, y);
-        bCtx.moveTo(x, y);
-      } else {
-        ctx.lineTo(x, y);
-        bCtx.lineTo(x, y);
+const _texCache = new Map();
+function _drawWood(cfg) {
+  const key = cfg.baseColor + cfg.isLacquer;
+  if (_texCache.has(key)) return _texCache.get(key);
+  const size = 768;
+  const mk = () => { const c = document.createElement('canvas'); c.width = c.height = size; return c; };
+  const cc = mk(), bc = mk();
+  const ctx = cc.getContext('2d'), b = bc.getContext('2d');
+  ctx.fillStyle = cfg.baseColor; ctx.fillRect(0, 0, size, size);
+  b.fillStyle = '#808080'; b.fillRect(0, 0, size, size);
+  let seed = 11;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  if (cfg.isLacquer) {
+    for (let i = 0; i < 2600; i++) { // laca com leve "casca de laranja"
+      ctx.fillStyle = i % 2 ? cfg.highlightColor : cfg.grainColor;
+      ctx.globalAlpha = 0.035;
+      ctx.beginPath(); ctx.arc(rnd() * size, rnd() * size, 1 + rnd() * 3, 0, 6.283); ctx.fill();
+    }
+  } else {
+    // faixas largas de tom (variação natural entre tábuas)
+    for (let i = 0; i < 6; i++) {
+      ctx.fillStyle = i % 2 ? cfg.highlightColor : cfg.grainColor;
+      ctx.globalAlpha = 0.08; ctx.fillRect(rnd() * size, 0, 40 + rnd() * 160, size);
+    }
+    // anéis de crescimento em arco (corte tangencial)
+    for (let k = 1; k < 16; k++) {
+      ctx.beginPath(); ctx.ellipse(size * 0.5, size * 1.1, 30 + k * 26, 300 + k * 70, 0, 0, 6.283);
+      ctx.strokeStyle = k % 2 ? cfg.grainColor : cfg.highlightColor;
+      ctx.globalAlpha = 0.09; ctx.lineWidth = 2 + (k % 3); ctx.stroke();
+    }
+    // fibras longas onduladas
+    for (let i = 0; i < 950; i++) {
+      const x0 = rnd() * size, lw = 0.5 + rnd() * 2, amp = 3 + rnd() * 14, f = 0.004 + rnd() * 0.01, ph = rnd() * 6.28;
+      ctx.beginPath(); b.beginPath();
+      for (let y = 0; y <= size; y += 16) {
+        const x = x0 + Math.sin(y * f + ph) * amp + Math.sin(y * f * 2.7 + ph * 1.7) * amp * 0.35;
+        if (y) { ctx.lineTo(x, y); b.lineTo(x, y); } else { ctx.moveTo(x, y); b.moveTo(x, y); }
       }
+      ctx.strokeStyle = rnd() < 0.62 ? cfg.grainColor : cfg.highlightColor;
+      ctx.globalAlpha = 0.05 + rnd() * 0.2; ctx.lineWidth = lw; ctx.stroke();
+      b.strokeStyle = rnd() < 0.5 ? '#585858' : '#a8a8a8'; b.globalAlpha = 0.25; b.lineWidth = lw; b.stroke();
     }
-
-    ctx.strokeStyle = i % 3 === 0 ? cfg.highlightColor : cfg.grainColor;
-    ctx.globalAlpha = cfg.isLacquer ? 0.1 : (i % 4 === 0 ? 0.38 : 0.22);
-    ctx.lineWidth = cfg.isLacquer ? 1.0 : (1 + (i % 3) * 0.85);
-    ctx.stroke();
-
-    bCtx.strokeStyle = i % 2 === 0 ? '#686868' : '#969696';
-    bCtx.globalAlpha = cfg.isLacquer ? 0.12 : 0.35;
-    bCtx.lineWidth = 1.2;
-    bCtx.stroke();
-  }
-
-  if (!cfg.isLacquer) {
-    for (let p = 0; p < 900; p++) {
-      const px = Math.random() * size;
-      const py = Math.random() * size;
-      const len = 6 + Math.random() * 18;
-      ctx.fillStyle = cfg.grainColor;
-      ctx.globalAlpha = 0.18;
-      ctx.fillRect(px, py, 1, len);
+    // poros e um nó ocasional
+    for (let p = 0; p < 1400; p++) {
+      ctx.fillStyle = cfg.grainColor; ctx.globalAlpha = 0.2;
+      ctx.fillRect(rnd() * size, rnd() * size, 1, 3 + rnd() * 14);
+    }
+    const kx = rnd() * size, ky = rnd() * size;
+    for (let r = 3; r < 26; r += 4) {
+      ctx.beginPath(); ctx.ellipse(kx, ky, r * 0.7, r * 1.5, 0, 0, 6.283);
+      ctx.strokeStyle = cfg.grainColor; ctx.globalAlpha = 0.28; ctx.lineWidth = 1.4; ctx.stroke();
+      b.beginPath(); b.ellipse(kx, ky, r * 0.7, r * 1.5, 0, 0, 6.283); b.strokeStyle = '#404040'; b.globalAlpha = 0.3; b.stroke();
     }
   }
+  const pair = { cc, bc };
+  _texCache.set(key, pair);
+  return pair;
+}
 
-  const map = new THREE.CanvasTexture(colorCanvas);
-  map.wrapS = THREE.RepeatWrapping;
-  map.wrapT = THREE.RepeatWrapping;
+function createWoodTexturesFromConfig(cfg) {
+  const { cc, bc } = _drawWood(cfg);
+  const map = new THREE.CanvasTexture(cc);
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;
   map.colorSpace = THREE.SRGBColorSpace;
   map.anisotropy = 8;
-
-  const bumpMap = new THREE.CanvasTexture(bumpCanvas);
-  bumpMap.wrapS = THREE.RepeatWrapping;
-  bumpMap.wrapT = THREE.RepeatWrapping;
-
+  const bumpMap = new THREE.CanvasTexture(bc);
+  bumpMap.wrapS = bumpMap.wrapT = THREE.RepeatWrapping;
   return { map, bumpMap };
 }
 
 /* ==========================================================================
    2. CENA 3D, ILUMINAÇÃO DE ESTÚDIO E CONTROLES DE CÂMERA
    ========================================================================== */
+const IS_MOBILE = matchMedia('(max-width: 820px)').matches || /Android|iPhone|iPad/i.test(navigator.userAgent);
 const container = document.getElementById('canvasContainer');
 const scene = new THREE.Scene();
 
@@ -227,16 +228,16 @@ const renderer = new THREE.WebGLRenderer({
   powerPreference: 'high-performance'
 });
 renderer.setSize(container.clientWidth, container.clientHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, IS_MOBILE ? 1.5 : 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.12;
+renderer.toneMappingExposure = 1.15;
 container.appendChild(renderer.domElement);
 
 const pmremGenerator = new THREE.PMREMGenerator(renderer);
 scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
-scene.environmentIntensity = 0.55;
+scene.environmentIntensity = 0.7;
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
@@ -252,7 +253,7 @@ scene.add(hemiLight);
 const keyLight = new THREE.DirectionalLight(0xfff1de, 1.85);
 keyLight.position.set(3.4, 5.2, 3.6);
 keyLight.castShadow = true;
-keyLight.shadow.mapSize.set(2048, 2048);
+keyLight.shadow.mapSize.set(IS_MOBILE ? 1024 : 2048, IS_MOBILE ? 1024 : 2048);
 keyLight.shadow.camera.near = 0.5;
 keyLight.shadow.camera.far = 16;
 keyLight.shadow.camera.left = -2.8;
@@ -376,7 +377,7 @@ const bristleMat = new THREE.MeshStandardMaterial({
   roughness: 0.6
 });
 const bristleMesh = new THREE.Mesh(
-  new THREE.BoxGeometry(0.044, 0.048, 0.016),
+  boxGeo(0.044, 0.048, 0.016),
   bristleMat
 );
 bristleMesh.position.y = 0.024;
@@ -539,6 +540,9 @@ function parseFurnitureRequest(rawText, manualDims) {
     displayTitle = 'Armário Multiuso';
   }
 
+  const custom = detectCustom(text);
+  if (custom) { category = custom.category; displayTitle = custom.title; }
+
   const defaults = {
     armario_pia:     { w: 120, h: 85,  d: 56 },
     guarda_roupa:    { w: 185, h: 215, d: 58 },
@@ -548,7 +552,7 @@ function parseFurnitureRequest(rawText, manualDims) {
     armario:         { w: 110, h: 165, d: 48 }
   };
 
-  let { w, h, d } = defaults[category];
+  let { w, h, d } = custom ? custom.dims : defaults[category];
   let isAutoImagined = true;
 
   const nxmMatch = text.match(/(\d+[.,]?\d*)\s*(?:m|cm)?\s*[x×]\s*(\d+[.,]?\d*)/);
@@ -620,7 +624,9 @@ function parseFurnitureRequest(rawText, manualDims) {
     hasDrawers,
     hasShelf,
     isAutoImagined,
-    suggestedFinish
+    suggestedFinish,
+    kind: custom ? custom.kind : null,
+    levels: custom ? custom.levels : 0
   };
 }
 
@@ -645,7 +651,7 @@ function buildProceduralSinkCabinet(spec) {
   const boxH = h - plinthH - 0.036;
 
   const plinthBox = new THREE.Mesh(
-    new THREE.BoxGeometry(w - 0.04, plinthH, d - 0.06),
+    boxGeo(w - 0.04, plinthH, d - 0.06),
     createPartWoodMaterial(true)
   );
   plinthBox.position.set(0, plinthH / 2, -0.015);
@@ -655,7 +661,7 @@ function buildProceduralSinkCabinet(spec) {
   });
 
   const bottom = new THREE.Mesh(
-    new THREE.BoxGeometry(w, t, d),
+    boxGeo(w, t, d),
     createPartWoodMaterial(true)
   );
   bottom.position.set(0, plinthH + t / 2, 0);
@@ -665,7 +671,7 @@ function buildProceduralSinkCabinet(spec) {
   });
 
   const leftSide = new THREE.Mesh(
-    new THREE.BoxGeometry(t, boxH - t, d),
+    boxGeo(t, boxH - t, d),
     createPartWoodMaterial(false)
   );
   leftSide.position.set(-w / 2 + t / 2, plinthH + boxH / 2 + t / 2, 0);
@@ -675,7 +681,7 @@ function buildProceduralSinkCabinet(spec) {
   });
 
   const rightSide = new THREE.Mesh(
-    new THREE.BoxGeometry(t, boxH - t, d),
+    boxGeo(t, boxH - t, d),
     createPartWoodMaterial(false)
   );
   rightSide.position.set(w / 2 - t / 2, plinthH + boxH / 2 + t / 2, 0);
@@ -685,7 +691,7 @@ function buildProceduralSinkCabinet(spec) {
   });
 
   const frontRail = new THREE.Mesh(
-    new THREE.BoxGeometry(w - t * 2, 0.06, t),
+    boxGeo(w - t * 2, 0.06, t),
     createPartWoodMaterial(true)
   );
   frontRail.position.set(0, plinthH + boxH - 0.03, d / 2 - t / 2);
@@ -702,7 +708,7 @@ function buildProceduralSinkCabinet(spec) {
   if (useSideDrawers) {
     const divX = -w / 2 + t + doorsAreaW + t / 2;
     const divider = new THREE.Mesh(
-      new THREE.BoxGeometry(t, boxH - t, d - 0.03),
+      boxGeo(t, boxH - t, d - 0.03),
       createPartWoodMaterial(false)
     );
     divider.position.set(divX, plinthH + boxH / 2 + t / 2, -0.01);
@@ -721,18 +727,18 @@ function buildProceduralSinkCabinet(spec) {
 
       const drawerMat = createPartWoodMaterial(false);
       const front = new THREE.Mesh(
-        new THREE.BoxGeometry(drawerColW - 0.006, drawerH - 0.006, t),
+        boxGeo(drawerColW - 0.006, drawerH - 0.006, t),
         drawerMat
       );
       dg.add(front);
 
-      const handle = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.012, 0.02), chromeMat);
+      const handle = new THREE.Mesh(boxGeo(0.11, 0.012, 0.02), chromeMat);
       handle.position.set(0, drawerH * 0.25, 0.018);
       handle.userData.nonPaintable = true;
       dg.add(handle);
 
       const inner = new THREE.Mesh(
-        new THREE.BoxGeometry(drawerColW - 0.04, drawerH * 0.65, d - 0.08),
+        boxGeo(drawerColW - 0.04, drawerH * 0.65, d - 0.08),
         drawerMat
       );
       inner.position.set(0, -0.01, -(d - 0.08) / 2);
@@ -751,7 +757,7 @@ function buildProceduralSinkCabinet(spec) {
 
   if (spec.hasShelf) {
     const shelf = new THREE.Mesh(
-      new THREE.BoxGeometry(doorsAreaW - 0.006, t, d - 0.08),
+      boxGeo(doorsAreaW - 0.006, t, d - 0.08),
       createPartWoodMaterial(true)
     );
     shelf.position.set(doorsCenterX, plinthH + boxH * 0.46, -0.02);
@@ -773,13 +779,13 @@ function buildProceduralSinkCabinet(spec) {
     pivot.position.set(isLeftHinged ? slotX - singleDoorW / 2 : slotX + singleDoorW / 2, doorY, d / 2 - t / 2);
 
     const panel = new THREE.Mesh(
-      new THREE.BoxGeometry(singleDoorW, doorH, t),
+      boxGeo(singleDoorW, doorH, t),
       createPartWoodMaterial(false)
     );
     panel.position.set(isLeftHinged ? singleDoorW / 2 : -singleDoorW / 2, 0, 0);
     pivot.add(panel);
 
-    const knob = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.11, 0.02), chromeMat);
+    const knob = new THREE.Mesh(boxGeo(0.014, 0.11, 0.02), chromeMat);
     knob.position.set(isLeftHinged ? singleDoorW - 0.032 : -singleDoorW + 0.032, doorH * 0.28, 0.018);
     knob.userData.nonPaintable = true;
     pivot.add(knob);
@@ -800,19 +806,19 @@ function buildProceduralSinkCabinet(spec) {
   topGroup.position.set(0, plinthH + boxH + 0.018, 0.01);
 
   const slab = new THREE.Mesh(
-    new THREE.BoxGeometry(w + 0.03, 0.036, d + 0.03),
+    boxGeo(w + 0.03, 0.036, d + 0.03),
     createStonePartMaterial()
   );
   topGroup.add(slab);
 
   const sinkW = Math.min(0.52, doorsAreaW * 0.72);
   const sinkD = Math.min(0.36, d * 0.65);
-  const basinRim = new THREE.Mesh(new THREE.BoxGeometry(sinkW, 0.012, sinkD), inoxMat);
+  const basinRim = new THREE.Mesh(boxGeo(sinkW, 0.012, sinkD), inoxMat);
   basinRim.position.set(doorsCenterX, 0.02, 0.01);
   basinRim.userData.nonPaintable = true;
   topGroup.add(basinRim);
 
-  const basinInner = new THREE.Mesh(new THREE.BoxGeometry(sinkW - 0.04, 0.014, sinkD - 0.04), cavityMat);
+  const basinInner = new THREE.Mesh(boxGeo(sinkW - 0.04, 0.014, sinkD - 0.04), cavityMat);
   basinInner.position.set(doorsCenterX, 0.021, 0.01);
   basinInner.userData.nonPaintable = true;
   topGroup.add(basinInner);
@@ -822,7 +828,7 @@ function buildProceduralSinkCabinet(spec) {
   faucetNeck.userData.nonPaintable = true;
   topGroup.add(faucetNeck);
 
-  const faucetSpout = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.014, 0.12), chromeMat);
+  const faucetSpout = new THREE.Mesh(boxGeo(0.016, 0.014, 0.12), chromeMat);
   faucetSpout.position.set(doorsCenterX, 0.185, -sinkD / 2 + 0.025);
   faucetSpout.userData.nonPaintable = true;
   topGroup.add(faucetSpout);
@@ -843,42 +849,42 @@ function buildProceduralWardrobe(spec) {
   const plinthH = 0.07;
   const bodyH = h - plinthH;
 
-  const plinthBox = new THREE.Mesh(new THREE.BoxGeometry(w - 0.03, plinthH, d - 0.04), createPartWoodMaterial(true));
+  const plinthBox = new THREE.Mesh(boxGeo(w - 0.03, plinthH, d - 0.04), createPartWoodMaterial(true));
   plinthBox.position.set(0, plinthH / 2, -0.01);
   registerPart(plinthBox, { x: 0, y: -0.25, z: 0 }, {
     name: 'Base Rodapé',
     dimsCm: { w: spec.wCm - 3, h: 7, d: spec.dCm - 4 }
   });
 
-  const backPanel = new THREE.Mesh(new THREE.BoxGeometry(w - 0.01, bodyH - 0.01, 0.012), createPartWoodMaterial(false));
+  const backPanel = new THREE.Mesh(boxGeo(w - 0.01, bodyH - 0.01, 0.012), createPartWoodMaterial(false));
   backPanel.position.set(0, plinthH + bodyH / 2, -d / 2 + 0.006);
   registerPart(backPanel, { x: 0, y: 0.15, z: -0.58 }, {
     name: 'Parede Fundo',
     dimsCm: { w: spec.wCm - 1, h: Math.round(bodyH * 100), d: 1.2 }
   });
 
-  const bottom = new THREE.Mesh(new THREE.BoxGeometry(w, t, d), createPartWoodMaterial(true));
+  const bottom = new THREE.Mesh(boxGeo(w, t, d), createPartWoodMaterial(true));
   bottom.position.set(0, plinthH + t / 2, 0);
   registerPart(bottom, { x: 0, y: -0.15, z: 0.25 }, {
     name: 'Base Inferior',
     dimsCm: { w: spec.wCm, h: 2.2, d: spec.dCm }
   });
 
-  const top = new THREE.Mesh(new THREE.BoxGeometry(w, t, d), createPartWoodMaterial(true));
+  const top = new THREE.Mesh(boxGeo(w, t, d), createPartWoodMaterial(true));
   top.position.set(0, plinthH + bodyH - t / 2, 0);
   registerPart(top, { x: 0, y: 0.58, z: 0 }, {
     name: 'Tampo Superior',
     dimsCm: { w: spec.wCm, h: 2.2, d: spec.dCm }
   });
 
-  const leftSide = new THREE.Mesh(new THREE.BoxGeometry(t, bodyH - t * 2, d), createPartWoodMaterial(false));
+  const leftSide = new THREE.Mesh(boxGeo(t, bodyH - t * 2, d), createPartWoodMaterial(false));
   leftSide.position.set(-w / 2 + t / 2, plinthH + bodyH / 2, 0);
   registerPart(leftSide, { x: -0.48, y: 0.1, z: 0 }, {
     name: 'Parede Lateral Esquerda',
     dimsCm: { w: 2.2, h: Math.round((bodyH - t * 2) * 100), d: spec.dCm }
   });
 
-  const rightSide = new THREE.Mesh(new THREE.BoxGeometry(t, bodyH - t * 2, d), createPartWoodMaterial(false));
+  const rightSide = new THREE.Mesh(boxGeo(t, bodyH - t * 2, d), createPartWoodMaterial(false));
   rightSide.position.set(w / 2 - t / 2, plinthH + bodyH / 2, 0);
   registerPart(rightSide, { x: 0.48, y: 0.1, z: 0 }, {
     name: 'Parede Lateral Direita',
@@ -886,7 +892,7 @@ function buildProceduralWardrobe(spec) {
   });
 
   const maleiroY = plinthH + bodyH - 0.42;
-  const maleiroShelf = new THREE.Mesh(new THREE.BoxGeometry(w - t * 2, t, d - 0.03), createPartWoodMaterial(true));
+  const maleiroShelf = new THREE.Mesh(boxGeo(w - t * 2, t, d - 0.03), createPartWoodMaterial(true));
   maleiroShelf.position.set(0, maleiroY, 0);
   registerPart(maleiroShelf, { x: 0, y: 0.4, z: 0.35 }, {
     name: 'Prateleira Maleiro',
@@ -895,7 +901,7 @@ function buildProceduralWardrobe(spec) {
 
   const hasCenterDiv = w >= 1.25;
   if (hasCenterDiv) {
-    const midDiv = new THREE.Mesh(new THREE.BoxGeometry(t, maleiroY - (plinthH + t), d - 0.04), createPartWoodMaterial(false));
+    const midDiv = new THREE.Mesh(boxGeo(t, maleiroY - (plinthH + t), d - 0.04), createPartWoodMaterial(false));
     midDiv.position.set(0, (plinthH + t + maleiroY) / 2, -0.005);
     registerPart(midDiv, { x: 0, y: 0.2, z: 0.3 }, {
       name: 'Divisória Central',
@@ -918,7 +924,7 @@ function buildProceduralWardrobe(spec) {
   const shelfCenterX = hasCenterDiv ? w / 4 : 0;
   [0.38, 0.56, 0.74].forEach((ratio, idx) => {
     const sy = plinthH + (maleiroY - plinthH) * ratio;
-    const sh = new THREE.Mesh(new THREE.BoxGeometry(shelfSpan - 0.01, t, d - 0.05), createPartWoodMaterial(true));
+    const sh = new THREE.Mesh(boxGeo(shelfSpan - 0.01, t, d - 0.05), createPartWoodMaterial(true));
     sh.position.set(shelfCenterX, sy, -0.01);
     registerPart(sh, { x: 0.25, y: 0.1 * idx, z: 0.38 + idx * 0.08 }, {
       name: `Prateleira ${idx + 1}`,
@@ -932,7 +938,7 @@ function buildProceduralWardrobe(spec) {
       const dg = new THREE.Group();
       const gy = plinthH + t + 0.11 + g * 0.19;
       dg.position.set(shelfCenterX, gy, d / 2 - 0.04);
-      const dFront = new THREE.Mesh(new THREE.BoxGeometry(drawerW, 0.17, 0.02), createPartWoodMaterial(false));
+      const dFront = new THREE.Mesh(boxGeo(drawerW, 0.17, 0.02), createPartWoodMaterial(false));
       dg.add(dFront);
       const pInfo = registerPart(dg, { x: 0.3, y: 0.05, z: 0.55 + g * 0.1 }, {
         name: `Gaveta Interna ${g + 1}`,
@@ -954,11 +960,11 @@ function buildProceduralWardrobe(spec) {
     const pivot = new THREE.Group();
     pivot.position.set(isLeftHinged ? slotX - singleDoorW / 2 : slotX + singleDoorW / 2, doorY, d / 2 + 0.002);
 
-    const doorPanel = new THREE.Mesh(new THREE.BoxGeometry(singleDoorW, doorH, t), createPartWoodMaterial(false));
+    const doorPanel = new THREE.Mesh(boxGeo(singleDoorW, doorH, t), createPartWoodMaterial(false));
     doorPanel.position.set(isLeftHinged ? singleDoorW / 2 : -singleDoorW / 2, 0, 0);
     pivot.add(doorPanel);
 
-    const longHandle = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.32, 0.022), chromeMat);
+    const longHandle = new THREE.Mesh(boxGeo(0.014, 0.32, 0.022), chromeMat);
     longHandle.position.set(isLeftHinged ? singleDoorW - 0.032 : -singleDoorW + 0.032, 0, 0.018);
     longHandle.userData.nonPaintable = true;
     pivot.add(longHandle);
@@ -983,7 +989,7 @@ function buildProceduralKitchen(spec) {
   const t = 0.022;
   const lowerH = 0.86;
 
-  const plinthBox = new THREE.Mesh(new THREE.BoxGeometry(w - 0.04, 0.08, d - 0.05), createPartWoodMaterial(true));
+  const plinthBox = new THREE.Mesh(boxGeo(w - 0.04, 0.08, d - 0.05), createPartWoodMaterial(true));
   plinthBox.position.set(0, 0.04, -0.015);
   registerPart(plinthBox, { x: 0, y: -0.25, z: 0 }, {
     name: 'Rodapé Balcão',
@@ -991,7 +997,7 @@ function buildProceduralKitchen(spec) {
   });
 
   const lowerBoxH = lowerH - 0.08 - 0.036;
-  const lowerBottom = new THREE.Mesh(new THREE.BoxGeometry(w, t, d), createPartWoodMaterial(true));
+  const lowerBottom = new THREE.Mesh(boxGeo(w, t, d), createPartWoodMaterial(true));
   lowerBottom.position.set(0, 0.08 + t / 2, 0);
   registerPart(lowerBottom, { x: 0, y: -0.15, z: 0.25 }, {
     name: 'Base Balcão Inferior',
@@ -1000,7 +1006,7 @@ function buildProceduralKitchen(spec) {
 
   const wallNames = ['Parede Lateral Esquerda', 'Divisória Central Balcão', 'Parede Lateral Direita'];
   [-w / 2 + t / 2, 0, w / 2 - t / 2].forEach((px, idx) => {
-    const post = new THREE.Mesh(new THREE.BoxGeometry(t, lowerBoxH - t, d), createPartWoodMaterial(false));
+    const post = new THREE.Mesh(boxGeo(t, lowerBoxH - t, d), createPartWoodMaterial(false));
     post.position.set(px, 0.08 + lowerBoxH / 2 + t / 2, 0);
     registerPart(post, { x: (idx - 1) * 0.42, y: 0.1, z: 0 }, {
       name: wallNames[idx],
@@ -1008,7 +1014,7 @@ function buildProceduralKitchen(spec) {
     });
   });
 
-  const counterTop = new THREE.Mesh(new THREE.BoxGeometry(w + 0.04, 0.036, d + 0.04), createStonePartMaterial());
+  const counterTop = new THREE.Mesh(boxGeo(w + 0.04, 0.036, d + 0.04), createStonePartMaterial());
   counterTop.position.set(0, lowerH - 0.018, 0.01);
   registerPart(counterTop, { x: 0, y: 0.35, z: 0.35 }, {
     name: 'Tampo Bancada',
@@ -1026,11 +1032,11 @@ function buildProceduralKitchen(spec) {
     const pivot = new THREE.Group();
     pivot.position.set(isLeft ? slotX - singleW / 2 : slotX + singleW / 2, 0.08 + t + doorH / 2, d / 2 + 0.002);
 
-    const panel = new THREE.Mesh(new THREE.BoxGeometry(singleW, doorH, t), createPartWoodMaterial(false));
+    const panel = new THREE.Mesh(boxGeo(singleW, doorH, t), createPartWoodMaterial(false));
     panel.position.set(isLeft ? singleW / 2 : -singleW / 2, 0, 0);
     pivot.add(panel);
 
-    const knob = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.11, 0.02), chromeMat);
+    const knob = new THREE.Mesh(boxGeo(0.014, 0.11, 0.02), chromeMat);
     knob.position.set(isLeft ? singleW - 0.03 : -singleW + 0.03, doorH * 0.32, 0.018);
     knob.userData.nonPaintable = true;
     pivot.add(knob);
@@ -1050,14 +1056,14 @@ function buildProceduralKitchen(spec) {
     const upperBaseY = totalH - upperH;
     const upperZ = -d / 2 + upperD / 2;
 
-    const uBottom = new THREE.Mesh(new THREE.BoxGeometry(w, t, upperD), createPartWoodMaterial(true));
+    const uBottom = new THREE.Mesh(boxGeo(w, t, upperD), createPartWoodMaterial(true));
     uBottom.position.set(0, upperBaseY + t / 2, upperZ);
     registerPart(uBottom, { x: 0, y: 0.45, z: 0.25 }, {
       name: 'Base Armário Aéreo',
       dimsCm: { w: spec.wCm, h: 2.2, d: Math.round(upperD * 100) }
     });
 
-    const uTop = new THREE.Mesh(new THREE.BoxGeometry(w, t, upperD), createPartWoodMaterial(true));
+    const uTop = new THREE.Mesh(boxGeo(w, t, upperD), createPartWoodMaterial(true));
     uTop.position.set(0, totalH - t / 2, upperZ);
     registerPart(uTop, { x: 0, y: 0.72, z: 0 }, {
       name: 'Tampo Armário Aéreo',
@@ -1065,7 +1071,7 @@ function buildProceduralKitchen(spec) {
     });
 
     [-w / 2 + t / 2, w / 2 - t / 2].forEach((ux, idx) => {
-      const uSide = new THREE.Mesh(new THREE.BoxGeometry(t, upperH - t * 2, upperD), createPartWoodMaterial(false));
+      const uSide = new THREE.Mesh(boxGeo(t, upperH - t * 2, upperD), createPartWoodMaterial(false));
       uSide.position.set(ux, upperBaseY + upperH / 2, upperZ);
       registerPart(uSide, { x: (idx === 0 ? -0.45 : 0.45), y: 0.55, z: 0 }, {
         name: idx === 0 ? 'Lateral Aéreo Esq.' : 'Lateral Aéreo Dir.',
@@ -1079,11 +1085,11 @@ function buildProceduralKitchen(spec) {
       const pivot = new THREE.Group();
       pivot.position.set(isLeft ? slotX - singleW / 2 : slotX + singleW / 2, upperBaseY + upperH / 2, upperZ + upperD / 2 + 0.002);
 
-      const uDoor = new THREE.Mesh(new THREE.BoxGeometry(singleW, upperH - 0.015, t), createPartWoodMaterial(false));
+      const uDoor = new THREE.Mesh(boxGeo(singleW, upperH - 0.015, t), createPartWoodMaterial(false));
       uDoor.position.set(isLeft ? singleW / 2 : -singleW / 2, 0, 0);
       pivot.add(uDoor);
 
-      const knob = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.1, 0.02), chromeMat);
+      const knob = new THREE.Mesh(boxGeo(0.014, 0.1, 0.02), chromeMat);
       knob.position.set(isLeft ? singleW - 0.03 : -singleW + 0.03, -upperH * 0.3, 0.018);
       knob.userData.nonPaintable = true;
       pivot.add(knob);
@@ -1108,14 +1114,14 @@ function buildProceduralSlatted(spec) {
   const t = 0.025;
   hasLedFeature = true;
 
-  const base = new THREE.Mesh(new THREE.BoxGeometry(w - 0.04, t, d - 0.04), createPartWoodMaterial(true));
+  const base = new THREE.Mesh(boxGeo(w - 0.04, t, d - 0.04), createPartWoodMaterial(true));
   base.position.set(0, t / 2, 0);
   registerPart(base, { x: 0, y: -0.25, z: 0 }, {
     name: 'Base Inferior',
     dimsCm: { w: spec.wCm - 4, h: 2.5, d: spec.dCm - 4 }
   });
 
-  const coreBox = new THREE.Mesh(new THREE.BoxGeometry(w - 0.06, h - 0.08, d - 0.07), createPartWoodMaterial(false));
+  const coreBox = new THREE.Mesh(boxGeo(w - 0.06, h - 0.08, d - 0.07), createPartWoodMaterial(false));
   coreBox.position.set(0, (h - 0.08) / 2 + t, -0.01);
   registerPart(coreBox, { x: 0, y: 0.35, z: -0.38 }, {
     name: 'Caixa Estrutural Interna',
@@ -1132,7 +1138,7 @@ function buildProceduralSlatted(spec) {
   const slatsGroup = new THREE.Group();
   const sharedSlatMat = createPartWoodMaterial(false);
   for (let i = 0; i < slatCount; i++) {
-    const slat = new THREE.Mesh(new THREE.BoxGeometry(slatW, slatH, slatDepth), sharedSlatMat);
+    const slat = new THREE.Mesh(boxGeo(slatW, slatH, slatDepth), sharedSlatMat);
     slat.position.set(startX + i * stepX, slatH / 2 + 0.015, d / 2 - 0.02);
     slatsGroup.add(slat);
   }
@@ -1141,7 +1147,7 @@ function buildProceduralSlatted(spec) {
     dimsCm: { w: spec.wCm - 6, h: Math.round(slatH * 100), d: 2.2 }
   });
 
-  const ledBar = new THREE.Mesh(new THREE.BoxGeometry(w - 0.04, 0.014, 0.018), ledStripMat);
+  const ledBar = new THREE.Mesh(boxGeo(w - 0.04, 0.014, 0.018), ledStripMat);
   ledBar.position.set(0, h - 0.042, d / 2 - 0.008);
   registerPart(ledBar, { x: 0, y: 0.45, z: 0.25 }, {
     name: 'Perfil LED Quente',
@@ -1153,7 +1159,7 @@ function buildProceduralSlatted(spec) {
   ledLight.position.set(0, h - 0.08, d / 2 + 0.18);
   furnitureRoot.add(ledLight);
 
-  const counterTop = new THREE.Mesh(new THREE.BoxGeometry(w + 0.05, 0.042, d + 0.05), createPartWoodMaterial(true));
+  const counterTop = new THREE.Mesh(boxGeo(w + 0.05, 0.042, d + 0.05), createPartWoodMaterial(true));
   counterTop.position.set(0, h - 0.015, 0.01);
   registerPart(counterTop, { x: 0, y: 0.65, z: 0 }, {
     name: 'Tampo Encabeçado',
@@ -1169,14 +1175,14 @@ function buildProceduralBookshelf(spec) {
   const d = spec.dCm / 100;
   const t = 0.022;
 
-  const bottom = new THREE.Mesh(new THREE.BoxGeometry(w, t, d), createPartWoodMaterial(true));
+  const bottom = new THREE.Mesh(boxGeo(w, t, d), createPartWoodMaterial(true));
   bottom.position.set(0, 0.05, 0);
   registerPart(bottom, { x: 0, y: -0.2, z: 0.2 }, {
     name: 'Base Inferior',
     dimsCm: { w: spec.wCm, h: 2.2, d: spec.dCm }
   });
 
-  const top = new THREE.Mesh(new THREE.BoxGeometry(w, t, d), createPartWoodMaterial(true));
+  const top = new THREE.Mesh(boxGeo(w, t, d), createPartWoodMaterial(true));
   top.position.set(0, h - t / 2, 0);
   registerPart(top, { x: 0, y: 0.55, z: 0 }, {
     name: 'Tampo Superior',
@@ -1184,7 +1190,7 @@ function buildProceduralBookshelf(spec) {
   });
 
   [-w / 2 + t / 2, w / 2 - t / 2].forEach((sx, idx) => {
-    const side = new THREE.Mesh(new THREE.BoxGeometry(t, h - 0.05 - t, d), createPartWoodMaterial(false));
+    const side = new THREE.Mesh(boxGeo(t, h - 0.05 - t, d), createPartWoodMaterial(false));
     side.position.set(sx, (0.05 + h - t) / 2, 0);
     registerPart(side, { x: idx === 0 ? -0.45 : 0.45, y: 0.1, z: 0 }, {
       name: idx === 0 ? 'Parede Lateral Esquerda' : 'Parede Lateral Direita',
@@ -1195,7 +1201,7 @@ function buildProceduralBookshelf(spec) {
   const shelfCount = Math.max(3, Math.round(h / 0.38));
   for (let i = 1; i < shelfCount; i++) {
     const sy = 0.05 + ((h - 0.05 - t) / shelfCount) * i;
-    const shelf = new THREE.Mesh(new THREE.BoxGeometry(w - t * 2, t, d - 0.01), createPartWoodMaterial(true));
+    const shelf = new THREE.Mesh(boxGeo(w - t * 2, t, d - 0.01), createPartWoodMaterial(true));
     shelf.position.set(0, sy, 0);
     registerPart(shelf, { x: 0, y: 0.14 * i, z: 0.38 + i * 0.05 }, {
       name: `Prateleira ${i}`,
@@ -1204,7 +1210,7 @@ function buildProceduralBookshelf(spec) {
 
     const divX = (i % 2 === 0 ? -1 : 1) * (w * 0.16);
     const segH = (h - 0.05 - t) / shelfCount - t;
-    const divider = new THREE.Mesh(new THREE.BoxGeometry(t, segH, d - 0.02), createPartWoodMaterial(false));
+    const divider = new THREE.Mesh(boxGeo(t, segH, d - 0.02), createPartWoodMaterial(false));
     divider.position.set(divX, sy + segH / 2 + t / 2, 0);
     registerPart(divider, { x: divX * 0.85, y: 0.2, z: 0.45 }, {
       name: `Divisória Nicho ${i}`,
@@ -1223,21 +1229,21 @@ function buildProceduralCabinet(spec) {
   const plinthH = 0.07;
   const bodyH = h - plinthH;
 
-  const plinthBox = new THREE.Mesh(new THREE.BoxGeometry(w - 0.03, plinthH, d - 0.04), createPartWoodMaterial(true));
+  const plinthBox = new THREE.Mesh(boxGeo(w - 0.03, plinthH, d - 0.04), createPartWoodMaterial(true));
   plinthBox.position.set(0, plinthH / 2, -0.01);
   registerPart(plinthBox, { x: 0, y: -0.25, z: 0 }, {
     name: 'Rodapé Base',
     dimsCm: { w: spec.wCm - 3, h: 7, d: spec.dCm - 4 }
   });
 
-  const bottom = new THREE.Mesh(new THREE.BoxGeometry(w, t, d), createPartWoodMaterial(true));
+  const bottom = new THREE.Mesh(boxGeo(w, t, d), createPartWoodMaterial(true));
   bottom.position.set(0, plinthH + t / 2, 0);
   registerPart(bottom, { x: 0, y: -0.15, z: 0.25 }, {
     name: 'Base Inferior',
     dimsCm: { w: spec.wCm, h: 2.2, d: spec.dCm }
   });
 
-  const top = new THREE.Mesh(new THREE.BoxGeometry(w, t, d), createPartWoodMaterial(true));
+  const top = new THREE.Mesh(boxGeo(w, t, d), createPartWoodMaterial(true));
   top.position.set(0, plinthH + bodyH - t / 2, 0);
   registerPart(top, { x: 0, y: 0.55, z: 0 }, {
     name: 'Tampo Superior',
@@ -1245,7 +1251,7 @@ function buildProceduralCabinet(spec) {
   });
 
   [-w / 2 + t / 2, w / 2 - t / 2].forEach((sx, idx) => {
-    const side = new THREE.Mesh(new THREE.BoxGeometry(t, bodyH - t * 2, d), createPartWoodMaterial(false));
+    const side = new THREE.Mesh(boxGeo(t, bodyH - t * 2, d), createPartWoodMaterial(false));
     side.position.set(sx, plinthH + bodyH / 2, 0);
     registerPart(side, { x: idx === 0 ? -0.48 : 0.48, y: 0.1, z: 0 }, {
       name: idx === 0 ? 'Parede Lateral Esquerda' : 'Parede Lateral Direita',
@@ -1256,7 +1262,7 @@ function buildProceduralCabinet(spec) {
   const shelves = Math.max(3, Math.round(bodyH / 0.36));
   for (let s = 1; s < shelves; s++) {
     const sy = plinthH + (bodyH / shelves) * s;
-    const sh = new THREE.Mesh(new THREE.BoxGeometry(w - t * 2 - 0.006, t, d - 0.05), createPartWoodMaterial(true));
+    const sh = new THREE.Mesh(boxGeo(w - t * 2 - 0.006, t, d - 0.05), createPartWoodMaterial(true));
     sh.position.set(0, sy, -0.015);
     registerPart(sh, { x: 0, y: 0.1 * s, z: 0.42 }, {
       name: `Prateleira Interna ${s}`,
@@ -1275,11 +1281,11 @@ function buildProceduralCabinet(spec) {
     const pivot = new THREE.Group();
     pivot.position.set(isLeft ? slotX - singleDoorW / 2 : slotX + singleDoorW / 2, plinthH + bodyH / 2, d / 2 + 0.002);
 
-    const panel = new THREE.Mesh(new THREE.BoxGeometry(singleDoorW, doorH, t), createPartWoodMaterial(false));
+    const panel = new THREE.Mesh(boxGeo(singleDoorW, doorH, t), createPartWoodMaterial(false));
     panel.position.set(isLeft ? singleDoorW / 2 : -singleDoorW / 2, 0, 0);
     pivot.add(panel);
 
-    const knob = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.22, 0.02), chromeMat);
+    const knob = new THREE.Mesh(boxGeo(0.014, 0.22, 0.02), chromeMat);
     knob.position.set(isLeft ? singleDoorW - 0.032 : -singleDoorW + 0.032, 0, 0.018);
     knob.userData.nonPaintable = true;
     pivot.add(knob);
@@ -1291,6 +1297,78 @@ function buildProceduralCabinet(spec) {
     registerOpenable(pInfo, {
       openRotY: isLeft ? -Math.PI * 0.54 : Math.PI * 0.54
     });
+  }
+}
+
+
+/* CONSTRUTOR 7: MÓVEIS DE SERRALHERIA METALON (mesa, rack, estante, banco, aparador) */
+const metalMat = new THREE.MeshStandardMaterial({ color: 0x1c1d20, roughness: 0.45, metalness: 0.8 });
+
+function buildMetalon(spec) {
+  clearFurniture();
+  const w = spec.wCm / 100, h = spec.hCm / 100, d = spec.dCm / 100;
+  const s = 0.03, tt = 0.03, legH = h - tt, inset = 0.01;
+  const frame = new THREE.Group();
+  const tube = (x, y, z, sx, sy, sz) => {
+    const m = new THREE.Mesh(boxGeo(sx, sy, sz), metalMat);
+    m.position.set(x, y, z); m.userData.nonPaintable = true; frame.add(m);
+  };
+  [-1, 1].forEach((ix) => [-1, 1].forEach((iz) => tube(ix * (w / 2 - s / 2 - inset), legH / 2, iz * (d / 2 - s / 2 - inset), s, legH, s)));
+  const levels = spec.levels || 0;
+  const ys = [];
+  for (let i = 1; i <= levels; i++) ys.push((legH * i) / (levels + 1));
+  ys.push(legH);
+  ys.forEach((y) => {
+    const rw = w - 2 * inset - 2 * s, rd = d - 2 * inset - 2 * s;
+    [-1, 1].forEach((k) => {
+      tube(0, y - s / 2, k * (d / 2 - s / 2 - inset), rw, s, s);
+      tube(k * (w / 2 - s / 2 - inset), y - s / 2, 0, s, s, rd);
+    });
+  });
+  registerPart(frame, { x: 0, y: -0.2, z: 0 }, {
+    name: 'Estrutura Metalon 30×30', dimsCm: { w: spec.wCm, h: spec.hCm - 3, d: spec.dCm }, paintable: false
+  });
+  ys.forEach((y, i) => {
+    const top = i === ys.length - 1;
+    const slab = new THREE.Mesh(boxGeo(top ? w : w - 0.01, tt, top ? d : d - 0.01), createPartWoodMaterial(true));
+    slab.position.set(0, y + tt / 2, 0);
+    registerPart(slab, { x: 0, y: 0.25 + i * 0.12, z: 0.3 }, {
+      name: top ? 'Tampo' : `Prateleira ${i + 1}`, dimsCm: { w: top ? spec.wCm : spec.wCm - 1, h: 3, d: top ? spec.dCm : spec.dCm - 1 }
+    });
+  });
+}
+
+/* CONSTRUTOR 8: CÔMODA / CRIADO-MUDO / GAVETEIRO */
+function buildChest(spec) {
+  clearFurniture();
+  const w = spec.wCm / 100, h = spec.hCm / 100, d = spec.dCm / 100, t = 0.022, legH = 0.1;
+  const bodyH = h - legH, rows = Math.max(1, spec.levels || 3);
+  const mk = (sx, sy, sz, x, y, z, rot = false) => { const m = new THREE.Mesh(boxGeo(sx, sy, sz), createPartWoodMaterial(rot)); m.position.set(x, y, z); return m; };
+  registerPart(mk(w, t, d, 0, legH + t / 2, 0, true), { x: 0, y: -0.15, z: 0.25 }, { name: 'Base Inferior', dimsCm: { w: spec.wCm, h: 2.2, d: spec.dCm } });
+  registerPart(mk(w, t, d, 0, h - t / 2, 0, true), { x: 0, y: 0.55, z: 0 }, { name: 'Tampo Superior', dimsCm: { w: spec.wCm, h: 2.2, d: spec.dCm } });
+  [-1, 1].forEach((k) => registerPart(mk(t, bodyH - 2 * t, d, k * (w / 2 - t / 2), legH + bodyH / 2, 0), { x: k * 0.45, y: 0.1, z: 0 }, {
+    name: k < 0 ? 'Parede Lateral Esquerda' : 'Parede Lateral Direita', dimsCm: { w: 2.2, h: Math.round((bodyH - 2 * t) * 100), d: spec.dCm }
+  }));
+  const feet = new THREE.Group();
+  [-1, 1].forEach((ix) => [-1, 1].forEach((iz) => {
+    const f = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.014, legH, 16), createPartWoodMaterial(false));
+    f.position.set(ix * (w / 2 - 0.05), legH / 2, iz * (d / 2 - 0.05)); feet.add(f);
+  }));
+  registerPart(feet, { x: 0, y: -0.25, z: 0 }, { name: 'Pés (4)', dimsCm: { w: 4.4, h: 10, d: 4.4 } });
+  const innerH = bodyH - 2 * t, dh = innerH / rows;
+  for (let i = 0; i < rows; i++) {
+    const g = new THREE.Group();
+    g.position.set(0, legH + t + dh * (rows - i - 0.5), d / 2 - t / 2);
+    const front = new THREE.Mesh(boxGeo(w - 2 * t - 0.006, dh - 0.006, t), createPartWoodMaterial(false));
+    g.add(front);
+    const hd = new THREE.Mesh(boxGeo(Math.min(0.16, w * 0.3), 0.014, 0.02), chromeMat);
+    hd.position.set(0, 0, 0.02); hd.userData.nonPaintable = true; g.add(hd);
+    const box = new THREE.Mesh(boxGeo(w - 2 * t - 0.05, dh * 0.7, d - 0.08), createPartWoodMaterial(false));
+    box.position.set(0, -0.01, -(d - 0.08) / 2); g.add(box);
+    const p = registerPart(g, { x: 0.3, y: 0.04 * i, z: 0.55 + i * 0.08 }, {
+      name: `Gaveta ${rows - i}`, dimsCm: { w: Math.round((w - 2 * t) * 100), h: Math.round(dh * 100), d: spec.dCm - 8 }
+    });
+    registerOpenable(p, { openOffset: new THREE.Vector3(0, 0, 0.24) });
   }
 }
 
@@ -1395,8 +1473,17 @@ function setupDetailedBlueprint(spec) {
     part.calloutEl = tag;
   });
 
+  renderBOM(spec);
   dimensionLinesGroup.visible = detailModeActive;
   dimOverlay.classList.toggle('hidden', !detailModeActive);
+}
+
+function renderBOM(spec) {
+  const el = document.getElementById('bomBox');
+  if (!el) return;
+  const bom = computeBOM(spec, animatedParts);
+  el.innerHTML = `<div class="bom-head"><strong>Ferragens e parafusos</strong><span>${countScrews(bom)} parafusos/pinos no total</span></div>` +
+    bom.map((b) => `<div class="bom-row"><b>${b.qty}×</b><span>${b.item}${b.note ? `<small>${b.note}</small>` : ''}</span></div>`).join('');
 }
 
 function updateDetailedCalloutsProjection() {
@@ -1514,6 +1601,7 @@ function applyPaintToPart(partInfo, bucketCfg, hitPoint = null) {
   });
 
   partInfo.paintedColorName = bucketCfg.short;
+  partInfo.paintedBucketId = bucketCfg.id;
   brushSweepTimer = 0.28;
 
   if (hitPoint) {
@@ -1533,6 +1621,7 @@ function resetAllPaintedParts() {
   applyFinish(currentFinish);
   paintableParts.forEach((p) => {
     p.paintedColorName = null;
+    p.paintedBucketId = null;
   });
   updatePaintedSummary();
 }
@@ -1635,10 +1724,13 @@ function buildFromSpec(spec) {
   if (spec.category === 'balcao_ripado') buildProceduralSlatted(spec);
   if (spec.category === 'estante') buildProceduralBookshelf(spec);
   if (spec.category === 'armario') buildProceduralCabinet(spec);
+  if (spec.category === 'metalon') buildMetalon(spec);
+  if (spec.category === 'comoda') buildChest(spec);
 
   setupDetailedBlueprint(spec);
 
   doorsBtnText.textContent = hasLedFeature ? 'Acender LED' : 'Abrir portas';
+  doorsBtn.style.display = spec.category === 'metalon' ? 'none' : '';
   frameCameraToModel(spec.wCm / 100, spec.hCm / 100);
 
   const originTag = spec.isAutoImagined ? ' · Medidas sugeridas pelo site' : '';
@@ -1646,7 +1738,11 @@ function buildFromSpec(spec) {
     ? 'Ripado + LED'
     : spec.category === 'estante'
       ? 'Nichos sob medida'
-      : `${spec.doorCount} portas`;
+      : spec.category === 'metalon'
+        ? 'Estrutura Metalon 30×30'
+        : spec.category === 'comoda'
+          ? `${spec.levels} gavetas`
+          : `${spec.doorCount} portas`;
 
   generatedSpecsEl.innerHTML = `Projeto ativo: <strong>${spec.displayTitle}</strong> · ${formatCmAndM(spec.wCm)} × ${formatCmAndM(spec.hCm)} · ${doorsInfo}${originTag}`;
 
@@ -2005,8 +2101,14 @@ explodeRange.addEventListener('input', (e) => {
    ========================================================================== */
 const clock = new THREE.Clock();
 
+let rafId = 0;
+let stageVisible = true;
+new IntersectionObserver(([e]) => { stageVisible = e.isIntersecting; if (stageVisible && !rafId) { clock.getDelta(); animate(); } }).observe(container);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && stageVisible && !rafId) { clock.getDelta(); animate(); } });
+
 function animate() {
-  requestAnimationFrame(animate);
+  if (!stageVisible || document.hidden) { rafId = 0; return; }
+  rafId = requestAnimationFrame(animate);
   const delta = Math.min(clock.getDelta(), 0.05);
   const elapsed = clock.getElapsedTime();
 
@@ -2113,7 +2215,30 @@ resizeStage();
 initPaintBucketsUI();
 
 // Inicia com Armário de Pia montando ao abrir a página
-runCreator('Quero criar um armário de pia com 2 portas e prateleira interna');
+function restoreProject(data) {
+  buildFromSpec(data.s);
+  if (data.f && FINISHES[data.f]) {
+    applyFinish(data.f);
+    document.querySelectorAll('.swatch-btn').forEach((b) => b.classList.toggle('active', b.dataset.finish === data.f));
+  }
+  (data.p || []).forEach(([i, id]) => {
+    const bucket = PAINT_BUCKETS.find((x) => x.id === id);
+    if (bucket && animatedParts[i]) applyPaintToPart(animatedParts[i], bucket);
+  });
+}
+
+let sharedProject = null;
+try {
+  const m = location.hash.match(/^#p=(.+)$/);
+  if (m) sharedProject = JSON.parse(decodeURIComponent(m[1]));
+} catch (err) { sharedProject = null; }
+
+if (sharedProject && sharedProject.s) {
+  restoreProject(sharedProject);
+  detailModeBtn.click();
+} else {
+  runCreator('Quero criar um armário de pia com 2 portas e prateleira interna');
+}
 animate();
 
 /* ==========================================================================
@@ -2146,12 +2271,88 @@ document.querySelectorAll('.reveal-up').forEach((el) => observer.observe(el));
 const quoteForm = document.getElementById('quoteForm');
 const formFeedback = document.getElementById('formFeedback');
 
+const WHATS_NUMBER = '5521982814880';
+
+function encodeProject() {
+  const paints = [];
+  animatedParts.forEach((p, i) => { if (p.paintedBucketId) paints.push([i, p.paintedBucketId]); });
+  return encodeURIComponent(JSON.stringify({ s: currentSpec, f: currentFinish, p: paints }));
+}
+
+function buildWhatsMessage(name, notes) {
+  const sp = currentSpec;
+  const bom = computeBOM(sp, animatedParts);
+  const paints = animatedParts.filter((p) => p.paintedColorName).map((p) => `${p.name}: ${p.paintedColorName}`).join('; ') || 'sem pintura personalizada';
+  const link = `${location.href.split('#')[0]}#p=${encodeProject()}`;
+  return [
+    '*Pedido de móvel — Madeira & Grão*',
+    `Cliente: ${name}`,
+    `Móvel: ${sp.displayTitle} — ${sp.wCm} × ${sp.hCm} × ${sp.dCm} cm`,
+    `Código: ${sp.catalogId || 'sob medida'}`,
+    `Acabamento: ${FINISHES[currentFinish].labelSelect}`,
+    `Pintura: ${paints}`,
+    notes ? `Observações: ${notes}` : '',
+    '',
+    `*Ferragens (${countScrews(bom)} parafusos/pinos):*`,
+    ...bom.map((b) => `• ${b.qty}× ${b.item}`),
+    '',
+    `Ver o projeto 3D exato (abre com medidas e ferragens): ${link}`
+  ].filter((l, idx, arr) => l !== '' || arr[idx - 1] !== '').join('\n');
+}
+
 quoteForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const name = document.getElementById('clientName').value.trim();
-  const project = document.getElementById('projectType').value;
-  const finish = document.getElementById('finishChoice').value;
-
-  formFeedback.textContent = `Obrigado, ${name}! Recebemos o pedido de ${project} no acabamento ${finish} e retornaremos em breve.`;
-  quoteForm.reset();
+  const notes = document.getElementById('projectNotes').value.trim();
+  const url = `https://wa.me/${WHATS_NUMBER}?text=${encodeURIComponent(buildWhatsMessage(name, notes))}`;
+  window.open(url, '_blank', 'noopener');
+  formFeedback.textContent = `Obrigado, ${name}! Abrindo o WhatsApp com o projeto exato do seu móvel.`;
 });
+
+document.getElementById('saveImageBtn').addEventListener('click', () => {
+  renderer.render(scene, camera);
+  const a = document.createElement('a');
+  a.href = renderer.domElement.toDataURL('image/png');
+  a.download = `projeto-${(currentSpec.catalogId || 'sob-medida')}.png`;
+  a.click();
+});
+
+/* ==========================================================================
+   13. CATÁLOGO DE 1.500+ MÓVEIS (renderiza aos poucos para manter leve)
+   ========================================================================== */
+const catGrid = document.getElementById('catalogGrid');
+const catMore = document.getElementById('catalogMore');
+const catCount = document.getElementById('catalogCount');
+const catById = new Map(CATALOG.map((it) => [it.id, it]));
+let catFamily = 'all', catQuery = '', catShown = 24;
+
+function renderCatalog() {
+  const q = catQuery.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const list = CATALOG.filter((it) => (catFamily === 'all' || it.fam === catFamily) &&
+    (!q || `${it.name} ${it.finName} ${it.famName}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(q)));
+  catCount.textContent = `${list.length.toLocaleString('pt-BR')} móveis`;
+  catGrid.innerHTML = list.slice(0, catShown).map((it) => `
+    <article class="cat-card">
+      <span class="cat-tag fam-${it.fam}">${it.famName}</span>
+      <strong>${it.name}</strong>
+      <small>${it.w} × ${it.h} × ${it.d} cm · ${it.finName}</small>
+      <button type="button" class="text-action" data-id="${it.id}">Montar no 3D &rarr;</button>
+    </article>`).join('');
+  catMore.style.display = list.length > catShown ? '' : 'none';
+}
+
+catGrid.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-id]');
+  if (!btn) return;
+  const it = catById.get(btn.dataset.id);
+  document.getElementById('customPrompt').value = it.name;
+  buildFromSpec(specFromItem(it));
+  document.getElementById('inicio').scrollIntoView({ behavior: 'smooth' });
+});
+catMore.addEventListener('click', () => { catShown += 24; renderCatalog(); });
+document.getElementById('catalogSearch').addEventListener('input', (e) => { catQuery = e.target.value; catShown = 24; renderCatalog(); });
+document.querySelectorAll('.cat-filter').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('.cat-filter').forEach((x) => x.classList.toggle('active', x === b));
+  catFamily = b.dataset.fam; catShown = 24; renderCatalog();
+}));
+renderCatalog();

@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./style.css" />
+  <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" />
   <script type="importmap">
   {
     "imports": {
@@ -32,6 +33,7 @@
     <nav class="nav-pill" aria-label="Navegação principal">
       <a href="#inicio" class="nav-link active">Início</a>
       <a href="#planejador" class="nav-link">Criador 3D</a>
+      <a href="#catalogo" class="nav-link">Catálogo</a>
       <a href="#projetos" class="nav-link">Obras</a>
       <a href="#oficina" class="nav-link">A Madeira</a>
     </nav>
@@ -185,6 +187,7 @@
               <span class="detail-total-badge" id="detailTotalBadge">120 cm (1,20 m) × 85 cm (0,85 m) × 56 cm (0,56 m)</span>
             </div>
             <div class="detail-parts-grid" id="detailSummaryList"></div>
+            <div class="bom-box" id="bomBox"></div>
           </div>
 
           <div class="stage-card">
@@ -298,6 +301,26 @@
       </div>
     </section>
 
+    <!-- SEÇÃO: CATÁLOGO -->
+    <section id="catalogo" class="catalog-section">
+      <div class="section-header reveal-up">
+        <span class="meta-pill"><i class="dot"></i> Catálogo de móveis</span>
+        <h2>Mais de 1.500 móveis para montar em 3D.</h2>
+      </div>
+      <div class="cat-controls">
+        <input type="search" id="catalogSearch" placeholder="Buscar: guarda-roupa, mesa, rack, cômoda..." aria-label="Buscar móvel" />
+        <div class="cat-filters" role="group" aria-label="Filtrar por tipo">
+          <button type="button" class="cat-filter active" data-fam="all">Todos</button>
+          <button type="button" class="cat-filter" data-fam="m">Marcenaria</button>
+          <button type="button" class="cat-filter" data-fam="s">Serralheria Metalon</button>
+          <button type="button" class="cat-filter" data-fam="i">Ideias</button>
+        </div>
+        <span class="cat-count" id="catalogCount"></span>
+      </div>
+      <div class="cat-grid" id="catalogGrid"></div>
+      <button type="button" class="btn btn-glass cat-more" id="catalogMore">Ver mais móveis</button>
+    </section>
+
     <!-- SEÇÃO: PROJETOS EXECUTADOS -->
     <section id="projetos" class="works-section">
       <div class="section-header reveal-up">
@@ -360,7 +383,7 @@
           <span class="meta-pill"><i class="dot"></i> Atendimento personalizado</span>
           <h2>Vamos tirar o seu móvel do papel?</h2>
           <p>
-            O projeto, as medidas e as cores que você pintou no simulador 3D já vêm preenchidos aqui ao lado. Ajuste qualquer detalhe e envie para receber seu orçamento sob medida.
+            O projeto, as medidas e as cores que você pintou no simulador 3D já vêm preenchidos aqui ao lado. Ajuste qualquer detalhe e envie pelo WhatsApp: o marceneiro recebe as medidas, as ferragens e um link que abre o seu projeto exato em 3D.
           </p>
 
           <div class="palette-legend">
@@ -414,8 +437,9 @@
           </div>
 
           <button type="submit" class="btn btn-sage btn-lg btn-block">
-            Solicitar orçamento deste projeto
+            Pedir pelo WhatsApp com o projeto exato
           </button>
+          <button type="button" class="btn btn-glass btn-block" id="saveImageBtn">Baixar imagem do projeto</button>
           <p class="form-feedback" id="formFeedback" role="status"></p>
         </form>
       </div>
