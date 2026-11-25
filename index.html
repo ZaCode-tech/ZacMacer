@@ -31,7 +31,7 @@
 
     <nav class="nav-pill" aria-label="Navegação principal">
       <a href="#inicio" class="nav-link active">Início</a>
-      <a href="#planejador" class="nav-link">Planejador</a>
+      <a href="#planejador" class="nav-link">Criador 3D</a>
       <a href="#projetos" class="nav-link">Obras</a>
       <a href="#oficina" class="nav-link">A Madeira</a>
     </nav>
@@ -48,21 +48,21 @@
   <!-- Menu Mobile -->
   <div class="mobile-drawer" id="mobileDrawer">
     <a href="#inicio" class="mobile-link">Início</a>
-    <a href="#planejador" class="mobile-link">Planejador de Móveis</a>
+    <a href="#planejador" class="mobile-link">Criador de Móveis 3D</a>
     <a href="#projetos" class="mobile-link">Obras Entregues</a>
     <a href="#oficina" class="mobile-link">A Madeira &amp; Encaixes</a>
     <a href="#contato" class="btn btn-sage">Solicitar orçamento</a>
   </div>
 
   <main>
-    <!-- HERO + PALCO INTERATIVO 3D DE MONTAGEM -->
+    <!-- HERO + CRIADOR DE MÓVEIS + PALCO INTERATIVO 3D -->
     <section id="inicio" class="hero-section">
       <div class="hero-grid">
-        <!-- Coluna Editorial -->
+        <!-- Coluna Editorial + Criador Inteligente -->
         <div class="hero-copy reveal-up">
           <div class="badges-row">
             <span class="meta-pill"><i class="dot"></i> Marcenaria sob medida</span>
-            <span class="meta-pill">Execução própria</span>
+            <span class="meta-pill">Projeto interativo 3D</span>
           </div>
 
           <h1 class="hero-title">
@@ -70,27 +70,60 @@
           </h1>
 
           <p class="hero-subtitle">
-            Peças artesanais em madeira nobre, cortadas com precisão milimétrica e montadas peça por peça para vestir cada ambiente da sua casa.
+            Descreva o móvel que você imagina, informe medidas se desejar ou deixe o nosso projetista criar a estrutura e montar cada peça na hora.
           </p>
 
-          <div class="hero-cta-row">
-            <a href="#planejador" class="btn btn-sage btn-lg">Explorar montagem</a>
-            <a href="#projetos" class="btn btn-glass btn-lg">Ver projetos</a>
-          </div>
+          <!-- Painel: O que você quer criar? -->
+          <div class="creator-box" id="planejador">
+            <div class="creator-header">
+              <label for="customPrompt" class="creator-title">
+                <i class="dot"></i> O que você quer criar?
+              </label>
+              <span class="creator-badge">Medidas opcionais</span>
+            </div>
 
-          <!-- Seletor de móveis -->
-          <div class="furniture-selector" id="planejador">
-            <span class="selector-label">Escolha o móvel para acompanhar a montagem:</span>
-            <div class="selector-pills" role="tablist" aria-label="Modelos de móveis">
-              <button class="piece-btn active" data-model="vanity" role="tab" aria-selected="true">
-                Gabinete Suspenso
+            <textarea
+              id="customPrompt"
+              rows="2"
+              placeholder="Ex.: Quero criar um armário de pia com 1,20m, um guarda-roupa com 4 portas, ou um armário de cozinha..."
+            ></textarea>
+
+            <!-- Sugestões rápidas -->
+            <div class="quick-ideas" aria-label="Ideias rápidas de móveis">
+              <button type="button" class="idea-chip" data-idea="Quero criar um armário de pia com cuba inox e prateleira interna">Armário de Pia</button>
+              <button type="button" class="idea-chip" data-idea="Quero criar um guarda-roupa com cabideiro, maleiro e gavetas">Guarda-Roupa</button>
+              <button type="button" class="idea-chip" data-idea="Quero criar um armário de cozinha completo com balcão e aéreo">Armário de Cozinha</button>
+              <button type="button" class="idea-chip" data-idea="Quero criar um balcão ripado com iluminação LED quente">Balcão Ripado</button>
+              <button type="button" class="idea-chip" data-idea="Quero criar uma estante com nichos e portas inferiores">Estante</button>
+            </div>
+
+            <!-- Medidas opcionais -->
+            <div class="dimensions-row">
+              <div class="dim-field">
+                <label for="dimWidth">Largura (cm)</label>
+                <input type="number" id="dimWidth" min="40" max="450" placeholder="Auto" />
+              </div>
+              <div class="dim-field">
+                <label for="dimHeight">Altura (cm)</label>
+                <input type="number" id="dimHeight" min="40" max="300" placeholder="Auto" />
+              </div>
+              <div class="dim-field">
+                <label for="dimDepth">Profund. (cm)</label>
+                <input type="number" id="dimDepth" min="25" max="120" placeholder="Auto" />
+              </div>
+            </div>
+
+            <div class="creator-actions">
+              <button type="button" class="btn btn-sage btn-lg creator-submit" id="generateFurnitureBtn">
+                Criar e montar em 3D
               </button>
-              <button class="piece-btn" data-model="counter" role="tab" aria-selected="false">
-                Balcão Ripado LED
+              <button type="button" class="btn btn-glass" id="surpriseFurnitureBtn" title="Gerar uma ideia automática">
+                Imaginar móvel
               </button>
-              <button class="piece-btn" data-model="kitchen" role="tab" aria-selected="false">
-                Bancada Gourmet
-              </button>
+            </div>
+
+            <div class="generated-specs" id="generatedSpecs">
+              Projeto ativo: <strong>Armário de Pia</strong> · 120 × 85 × 56 cm · 2 portas + prateleira
             </div>
           </div>
         </div>
@@ -210,139 +243,12 @@
       </div>
 
       <div class="works-grid">
-        <article class="work-card reveal-up" data-select-model="vanity">
+        <article class="work-card reveal-up" data-preset-prompt="Quero criar um armário de pia de 120cm com cuba inox, 2 portas e prateleira interna">
           <div class="work-media">
-            <img src="./assets/gabinete-banheiro.jpg" alt="Gabinete suspenso em madeira nogueira com bancada branca" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+            <img src="./assets/gabinete-banheiro.jpg" alt="Armário de pia em madeira nogueira com bancada e cuba" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
             <div class="work-fallback wood-pattern-1">
-              <span>Gabinete em Nogueira</span>
+              <span>Armário de Pia Sob Medida</span>
             </div>
           </div>
           <div class="work-body">
-            <div class="work-meta">Banheiro &amp; Lavabo · Nogueira Espresso</div>
-            <h3>Gabinete Suspenso com Gaveteiro</h3>
-            <p>Estrutura amadeirada resistente à umidade, duas portas com dobradiças ocultas e três gavetas alinhadas sob tampo claro.</p>
-            <button class="text-action">Visualizar montagem desta peça &rarr;</button>
-          </div>
-        </article>
-
-        <article class="work-card reveal-up delay-1" data-select-model="counter">
-          <div class="work-media">
-            <img src="./assets/balcao-ripado.jpg" alt="Balcão ripado em madeira com iluminação LED quente" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-            <div class="work-fallback wood-pattern-2">
-              <span>Balcão Ripado LED</span>
-            </div>
-          </div>
-          <div class="work-body">
-            <div class="work-meta">Recepção &amp; Gourmet · Ripado Artesanal</div>
-            <h3>Balcão Ripado com Luz Indireta</h3>
-            <p>Painel frontal composto por ripas verticais milimetricamente espaçadas sob tampo encabeçado com iluminação quente embutida.</p>
-            <button class="text-action">Visualizar montagem desta peça &rarr;</button>
-          </div>
-        </article>
-
-        <article class="work-card reveal-up delay-2" data-select-model="kitchen">
-          <div class="work-media">
-            <img src="./assets/bancada-gourmet.jpg" alt="Bancada de cozinha sob medida em madeira e tampo branco" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-            <div class="work-fallback wood-pattern-3">
-              <span>Bancada &amp; Roupeiro</span>
-            </div>
-          </div>
-          <div class="work-body">
-            <div class="work-meta">Cozinha &amp; Dormitório · Espresso &amp; Oat</div>
-            <h3>Bancadas e Armários Piso-Teto</h3>
-            <p>Estrutura interna reforçada, portas almofadadas com puxadores metálicos e fechamento completo até o teto no tom Aveia.</p>
-            <button class="text-action">Visualizar montagem desta peça &rarr;</button>
-          </div>
-        </article>
-      </div>
-    </section>
-
-    <!-- SEÇÃO: CONTATO -->
-    <section id="contato" class="contact-section">
-      <div class="contact-card reveal-up">
-        <div class="contact-info">
-          <span class="meta-pill"><i class="dot"></i> Atendimento personalizado</span>
-          <h2>Vamos tirar o seu móvel do papel?</h2>
-          <p>
-            Conte qual ambiente você deseja transformar e o acabamento que mais combina com o seu espaço. Preparamos o projeto sob medida e cuidamos de toda a fabricação e montagem.
-          </p>
-
-          <div class="palette-legend">
-            <div class="legend-item">
-              <span class="swatch-dot" style="background:#2B1D16;"></span>
-              <div>
-                <strong>Espresso</strong>
-                <small>Nogueira profunda</small>
-              </div>
-            </div>
-            <div class="legend-item">
-              <span class="swatch-dot" style="background:#E9DFCF;"></span>
-              <div>
-                <strong>Oat</strong>
-                <small>Aveia &amp; Carvalho claro</small>
-              </div>
-            </div>
-            <div class="legend-item">
-              <span class="swatch-dot" style="background:#9CAF88;"></span>
-              <div>
-                <strong>Sage Green</strong>
-                <small>Verde sálvia acetinado</small>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <form class="contact-form" id="quoteForm">
-          <div class="field-group">
-            <label for="clientName">Seu nome</label>
-            <input type="text" id="clientName" placeholder="Como podemos te chamar?" required />
-          </div>
-
-          <div class="field-group">
-            <label for="projectType">Ambiente ou móvel desejado</label>
-            <select id="projectType">
-              <option value="Cozinha / Bancada Gourmet">Cozinha / Bancada Gourmet</option>
-              <option value="Gabinete de Banheiro">Gabinete de Banheiro</option>
-              <option value="Balcão Ripado">Balcão Ripado sob medida</option>
-              <option value="Guarda-roupa / Closet Piso-Teto">Guarda-roupa / Closet Piso-Teto</option>
-              <option value="Projeto Completo">Projeto Completo</option>
-            </select>
-          </div>
-
-          <div class="field-group">
-            <label for="finishChoice">Acabamento preferido</label>
-            <select id="finishChoice">
-              <option value="Espresso (Madeira Escura / Nogueira)">Espresso (Madeira Escura / Nogueira)</option>
-              <option value="Oat (Madeira Clara / Aveia)">Oat (Madeira Clara / Aveia)</option>
-              <option value="Sage Green (Verde Sálvia)">Sage Green (Verde Sálvia)</option>
-              <option value="Combinação de tons">Combinação de tons</option>
-            </select>
-          </div>
-
-          <div class="field-group">
-            <label for="projectNotes">Medidas aproximadas ou detalhes</label>
-            <textarea id="projectNotes" rows="3" placeholder="Ex.: Bancada de 2,10m com 4 portas e ripado na lateral..."></textarea>
-          </div>
-
-          <button type="submit" class="btn btn-sage btn-lg btn-block">
-            Solicitar orçamento sob medida
-          </button>
-          <p class="form-feedback" id="formFeedback" role="status"></p>
-        </form>
-      </div>
-    </section>
-  </main>
-
-  <footer class="site-footer">
-    <div class="footer-inner">
-      <div class="brand">
-        <span class="brand-mark" aria-hidden="true"></span>
-        <span class="brand-name">Madeira &amp; Grão</span>
-      </div>
-      <p>Marcenaria artesanal &amp; móveis planejados sob medida.</p>
-    </div>
-  </footer>
-
-  <script type="module" src="./script.js"></script>
-</body>
-</html>
+            <div class="work-meta">Cozinha
