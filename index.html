@@ -3,522 +3,557 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ZacFurniture — Furniture Designer &amp; Marcenaria 3D</title>
+  <title>ZacFurniture — Furniture Designer & Estúdio 3D</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./style.css" />
-  <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" />
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-    }
-  }
-  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body>
-  <!-- Fundo arquitetônico Off-White Linho com degradês sutis -->
-  <div class="linen-backdrop" aria-hidden="true"></div>
-  <div class="ambient-orbs" aria-hidden="true">
-    <span class="orb orb-terracotta"></span>
-    <span class="orb orb-moss"></span>
-  </div>
-
-  <!-- Navegação Superior -->
-  <header class="topbar">
-    <a href="#inicio" class="brand">
-      <span class="brand-mark" aria-hidden="true"></span>
-      <div class="brand-stack">
-        <span class="brand-name">ZacFurniture</span>
-        <span class="brand-sub">Furniture Designer</span>
+  <!-- Cabeçalho -->
+  <header class="navbar">
+    <a href="index.html" class="brand">
+      <div class="brand-mark">ZF</div>
+      <div class="brand-text">
+        <h1>ZacFurniture</h1>
+        <span>Furniture Designer</span>
       </div>
     </a>
 
-    <nav class="nav-pill" aria-label="Navegação principal">
-      <a href="#inicio" class="nav-link active">Início</a>
-      <a href="#planejador" class="nav-link">Criador 3D</a>
-      <a href="#catalogo" class="nav-link">Catálogo (+1.500)</a>
-      <a href="#projetos" class="nav-link">Coleções</a>
-      <a href="#oficina" class="nav-link">Design &amp; Encaixes</a>
+    <nav class="nav-links">
+      <a href="#criador">Criador Inteligente</a>
+      <a href="#estudio-3d">Visualizador 3D</a>
+      <a href="#catalogo">Catálogo (1.500 Estruturas)</a>
+      <a href="editor.html" class="btn btn-moss btn-sm">Abrir Modo Editor 3D</a>
     </nav>
-
-    <div class="topbar-actions">
-      <a href="./editor.html" class="btn btn-terracotta" id="topEditorBtn">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4Z"/></svg>
-        <span>Studio Editor</span>
-      </a>
-      <a href="#contato" class="btn btn-moss">Solicitar Orçamento</a>
-      <button class="menu-toggle" id="menuToggle" aria-label="Abrir menu">
-        <span></span>
-        <span></span>
-      </button>
-    </div>
   </header>
 
-  <!-- Menu Mobile -->
-  <div class="mobile-drawer" id="mobileDrawer">
-    <a href="#inicio" class="mobile-link">Início</a>
-    <a href="#planejador" class="mobile-link">Criador de Móveis 3D</a>
-    <a href="./editor.html" class="mobile-link" id="mobileEditorBtn">Abrir Studio Editor 3D</a>
-    <a href="#catalogo" class="mobile-link">Catálogo (+1.500 Modelos)</a>
-    <a href="#projetos" class="mobile-link">Coleções Autorais</a>
-    <a href="#oficina" class="mobile-link">Design &amp; Ferragens</a>
-    <a href="#contato" class="btn btn-moss">Solicitar orçamento</a>
-  </div>
+  <!-- Hero + Gerador por Pedido -->
+  <section id="criador" class="hero-section animate-in">
+    <div class="hero-banner">
+      <div class="hero-badge">Engenharia Paramétrica • Marcenaria Sob Medida</div>
+      <h2>Descreva o móvel ideal e visualize cada ripa, divisória, prateleira e LED em 3D.</h2>
+      <p>
+        Nosso motor estrutural interpreta medidas exatas, iluminação LED Frio ou Quente, divisórias internas e prateleiras frontais ou traseiras em tempo real.
+      </p>
 
-  <main>
-    <!-- HERO + CRIADOR INTELIGENTE + PALCO INTERATIVO 3D -->
-    <section id="inicio" class="hero-section">
-      <div class="hero-grid">
-        <!-- Coluna Editorial + Criador Sob Medida -->
-        <div class="hero-copy reveal-up">
-          <div class="badges-row">
-            <span class="meta-pill"><i class="dot"></i> ZacFurniture · Furniture Designer</span>
-            <span class="meta-pill accent-terracotta">Engenharia &amp; Design 3D</span>
-          </div>
+      <div class="prompt-box">
+        <input
+          type="text"
+          id="prompt-input"
+          value="Quero criar um balcão ripado de 180cm com iluminação LED Frio, com divisória e pratileira atras"
+          placeholder="Ex: Balcão ripado de 180cm com iluminação LED Frio, com divisória e prateleira atrás..."
+        />
+        <button id="btn-generate" class="btn btn-moss">Gerar Projeto 3D</button>
+      </div>
 
-          <h1 class="hero-title">
-            Mobiliário autoral desenhado com precisão milimétrica.
-          </h1>
+      <div class="prompt-chips">
+        <button class="chip" data-prompt="Quero criar um balcão ripado de 180cm com iluminação LED Frio, com divisória e pratileira atras">
+          Balcão Ripado 180cm + LED Frio + Prateleira Atrás
+        </button>
+        <button class="chip" data-prompt="Painel ripado de 240cm com iluminação LED Quente e 2 prateleiras">
+          Painel Ripado 240cm + LED Quente
+        </button>
+        <button class="chip" data-prompt="Ilha gourmet de 200cm ripada com 2 divisórias e 3 prateleiras atrás com LED Frio">
+          Ilha Gourmet 200cm Dupla Face
+        </button>
+        <button class="chip" data-prompt="Armário de 140cm com 3 portas e 2 divisórias">
+          Armário 3 Portas (Testar Dobradiças)
+        </button>
+      </div>
+    </div>
+  </section>
 
-          <p class="hero-subtitle">
-            Descreva exatamente o móvel que você precisa — com divisórias, prateleiras traseiras, gavetas ou LED Frio/Quente — ou abra o <strong>Studio Editor</strong> para redimensionar, acrescentar e pintar cada peça em 3D.
-          </p>
-
-          <!-- Banner de Projeto Salvo do Editor (aparece quando retorna do editor.html) -->
-          <div class="saved-project-banner hidden" id="savedProjectBanner">
-            <div class="saved-banner-info">
-              <span class="saved-badge">Editado no Studio</span>
-              <strong id="savedProjectTitle">Projeto personalizado carregado</strong>
-            </div>
-            <button type="button" class="btn-link-clear" id="clearSavedProjectBtn">Restaurar padrão</button>
-          </div>
-
-          <!-- Painel: O que você quer criar? -->
-          <div class="creator-box" id="planejador">
-            <div class="creator-header">
-              <label for="customPrompt" class="creator-title">
-                <i class="dot"></i> Descreva seu projeto sob medida
-              </label>
-              <span class="creator-badge">IA Paramétrica</span>
-            </div>
-
-            <textarea
-              id="customPrompt"
-              rows="2"
-              placeholder="Ex.: Quero criar um balcão ripado de 180cm com iluminação LED Frio, com divisória e prateleira atrás..."
-            ></textarea>
-
-            <!-- Sugestões rápidas -->
-            <div class="quick-ideas" aria-label="Ideias rápidas de móveis">
-              <button type="button" class="idea-chip" data-idea="Quero criar um balcão ripado de 180cm com iluminação LED Frio, com divisória e prateleira atrás">Balcão Ripado LED Frio + Divisória</button>
-              <button type="button" class="idea-chip" data-idea="Quero criar um armário de pia de 130cm com cuba inox, 2 portas e gaveteiro">Armário de Pia</button>
-              <button type="button" class="idea-chip" data-idea="Quero criar um guarda-roupa de 200cm por 220cm com 4 portas, cabideiro, maleiro e gavetas">Guarda-Roupa</button>
-              <button type="button" class="idea-chip" data-idea="Quero criar um armário de cozinha de 210cm completo com balcão e aéreo">Armário de Cozinha</button>
-              <button type="button" class="idea-chip" data-idea="Quero criar uma estante de 150cm por 190cm com nichos e divisórias">Estante &amp; Nichos</button>
-            </div>
-
-            <!-- Medidas opcionais -->
-            <div class="dimensions-row">
-              <div class="dim-field">
-                <label for="dimWidth">Largura (cm)</label>
-                <input type="number" id="dimWidth" min="40" max="450" placeholder="Auto" />
-              </div>
-              <div class="dim-field">
-                <label for="dimHeight">Altura (cm)</label>
-                <input type="number" id="dimHeight" min="40" max="300" placeholder="Auto" />
-              </div>
-              <div class="dim-field">
-                <label for="dimDepth">Profund. (cm)</label>
-                <input type="number" id="dimDepth" min="25" max="120" placeholder="Auto" />
-              </div>
-            </div>
-
-            <div class="creator-actions">
-              <button type="button" class="btn btn-moss btn-lg creator-submit" id="generateFurnitureBtn">
-                Criar e montar em 3D
-              </button>
-              <button type="button" class="btn btn-outline-walnut" id="surpriseFurnitureBtn" title="Gerar uma ideia estrutural automática">
-                Sugerir estrutura
-              </button>
-            </div>
-
-            <div class="generated-specs" id="generatedSpecs">
-              Projeto ativo: <strong>Balcão Ripado LED Frio</strong> · 180 × 95 × 58 cm
-            </div>
-          </div>
+  <!-- Palco 3D Principal + Ficha Técnica -->
+  <section id="estudio-3d" class="studio-showcase animate-in">
+    <div class="viewer-card">
+      <div class="viewer-toolbar">
+        <div class="viewer-title-group">
+          <h3 id="active-model-title">Balcão Ripado 180cm — LED Frio & Prateleiras Traseiras</h3>
+          <span id="active-model-subtitle">Arraste para girar 360° • Role para aproximar • Botão direito para mover</span>
         </div>
 
-        <!-- Coluna Interativa 3D -->
-        <div class="stage-wrapper reveal-up delay-1">
-          <!-- Abas de Modos Especiais + Botão Abrir Studio Editor -->
-          <div class="mode-tabs-bar" role="toolbar" aria-label="Modos de interação do móvel">
-            <button type="button" class="mode-tab-btn" id="painterModeBtn" aria-pressed="false">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11Z"/><path d="m5 2 5 5"/><path d="M2 13h15"/><path d="M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4Z"/></svg>
-              <span>Modo Pintor</span>
-            </button>
+        <div class="viewer-controls-row">
+          <button id="btn-detailed-mode" class="toggle-pill" title="Exibir Parafusos Estruturais e Dobradiças Caneco 35mm">
+            🔩 Modo Detalhado: OFF
+          </button>
+          <a href="editor.html" id="btn-open-editor" class="btn btn-terracotta btn-sm">
+            ✏️ Editar no Modo Editor
+          </a>
+        </div>
+      </div>
 
-            <button type="button" class="mode-tab-btn" id="detailModeBtn" aria-pressed="false">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/></svg>
-              <span>Modo Detalhado &amp; Ferragens</span>
-            </button>
+      <div class="canvas-wrapper">
+        <canvas id="main-3d-canvas"></canvas>
 
-            <a href="./editor.html" class="mode-tab-btn mode-editor-launch" id="openEditorPageBtn" title="Abrir editor completo em tela cheia para aumentar, diminuir, acrescentar ou remover peças">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4Z"/></svg>
-              <span>Modo Editor 3D</span>
-            </a>
+        <div class="canvas-overlay-bottom">
+          <div class="explode-control">
+            <label for="explode-slider">Vista Explodida:</label>
+            <input type="range" id="explode-slider" min="0" max="1" step="0.02" value="0" />
+            <span id="explode-val">0%</span>
           </div>
 
-          <!-- Gaveta do Modo Pintor (Balde de Tinta + Pincel) -->
-          <div class="painter-drawer hidden" id="painterPanel">
-            <div class="painter-top-row">
-              <div class="bucket-indicator">
-                <span class="bucket-icon" id="activeBucketIcon" aria-hidden="true">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 11H5l1.4 8.4A2 2 0 0 0 8.37 21h7.26a2 2 0 0 0 1.97-1.6L19 11Z"/><path d="M5 11a7 7 0 0 1 14 0"/><path d="M19 13c1.5 0 2.5 1 2.5 2.5S20 18 19 18"/></svg>
-                </span>
-                <div>
-                  <small>Balde de tinta ativo</small>
-                  <strong id="activePaintName">Verde-Musgo ZacFurniture</strong>
-                </div>
-              </div>
-
-              <div class="painter-tools">
-                <button type="button" class="tool-pill active" id="toolBrushBtn" title="Pintar peça por peça com pincel">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.06 11.9l8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08"/><path d="M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.1 2.49 2.02 4 2.02 2.2 0 4-1.8 4-4.04a3.01 3.01 0 0 0-3-3.02z"/></svg>
-                  <span>Pincel</span>
-                </button>
-                <button type="button" class="tool-pill" id="toolRollerBtn" title="Pintar todas as peças com a cor do balde">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="16" height="6" rx="2"/><path d="M18 6h2a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-8v8"/></svg>
-                  <span>Pintar tudo</span>
-                </button>
-                <button type="button" class="tool-pill" id="clearPaintBtn" title="Remover tintas personalizadas">
-                  <span>Limpar</span>
-                </button>
-              </div>
-            </div>
-
-            <div class="paint-buckets-row" id="paintBucketsRow" role="radiogroup" aria-label="Cores do balde de tinta"></div>
-
-            <div class="painter-footer-note" id="paintedStatusText">
-              Clique ou passe o pincel sobre cada porta, divisória, prateleira ou tampo para pintar.
-            </div>
-          </div>
-
-          <!-- Gaveta do Modo Detalhado (Medidas + Parafusos/Dobradiças 3D + Plano de Corte) -->
-          <div class="detail-drawer hidden" id="detailPanel">
-            <div class="detail-header">
-              <span><i class="dot"></i> Medidas detalhadas &amp; posição exata de parafusos e dobradiças</span>
-              <span class="detail-total-badge" id="detailTotalBadge">180 cm (1,80 m) × 95 cm (0,95 m) × 58 cm (0,58 m)</span>
-            </div>
-
-            <!-- Legenda visual das ferragens 3D exibidas no modelo -->
-            <div class="hardware-3d-legend">
-              <span class="hw-pill"><i class="hw-dot hw-screw"></i> Parafusos Confirmat &amp; Chipboard</span>
-              <span class="hw-pill"><i class="hw-dot hw-hinge"></i> Dobradiças Caneco 35mm</span>
-              <span class="hw-pill"><i class="hw-dot hw-dowel"></i> Cavilhas 8×30mm &amp; Pinos</span>
-              <span class="hw-pill"><i class="hw-dot hw-slide"></i> Corrediças &amp; Suportes</span>
-            </div>
-
-            <div class="detail-parts-grid" id="detailSummaryList"></div>
-            <div class="sheet-estimate-bar" id="sheetEstimateBar"></div>
-            <div class="bom-box" id="bomBox"></div>
-          </div>
-
-          <!-- Palco 3D -->
-          <div class="stage-card" id="stageCard">
-            <div class="stage-viewport">
-              <div class="stage-top-right-group">
-                <button type="button" class="stage-env-btn" id="toggleStudioLightBtn" title="Alternar iluminação do estúdio entre Dia e Noturno (ideal para ver LED)">
-                  <span id="studioLightIcon">☀</span>
-                  <span id="studioLightLabel">Luz Dia</span>
-                </button>
-                <div class="stage-top-tag">
-                  <span class="dot"></span>
-                  <span id="currentFinishLabel">Madeira Nogueira &amp; Linho</span>
-                </div>
-              </div>
-
-              <div class="stage-hint" id="stageHint">
-                Arraste para girar · Clique na porta para abrir
-              </div>
-
-              <!-- Tooltip flutuante do Modo Pintor -->
-              <div class="painter-hover-tag hidden" id="painterTooltip"></div>
-
-              <!-- Camada de Cotas 3D (Modo Detalhado cm / m) -->
-              <div class="dimension-overlay hidden" id="dimensionOverlay" aria-hidden="true"></div>
-
-              <!-- Canvas 3D -->
-              <div id="canvasContainer" class="canvas-container" aria-label="Visualização 3D da montagem do móvel em madeira"></div>
-            </div>
-
-            <!-- Controles da Montagem -->
-            <div class="stage-controls-panel">
-              <div class="assembly-bar">
-                <button class="icon-action-btn" id="replayBtn" title="Montar novamente">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-                  <span>Montar</span>
-                </button>
-
-                <div class="slider-group">
-                  <label for="explodeRange">Explodir</label>
-                  <input type="range" id="explodeRange" min="0" max="100" value="0" aria-label="Controlar abertura das peças de madeira" />
-                </div>
-
-                <button class="icon-action-btn" id="doorsBtn" title="Abrir ou fechar portas, gavetas ou alternar LED">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 3v18"/><path d="M9 12h.01"/><path d="M15 12h.01"/></svg>
-                  <span id="doorsBtnText">Abrir portas</span>
-                </button>
-              </div>
-
-              <!-- Cartões flutuantes inferiores -->
-              <div class="floating-cards">
-                <div class="glass-subcard steps-card">
-                  <div class="subcard-header">
-                    <span><i class="dot"></i> Etapas da peça</span>
-                    <span class="muted" id="assemblyStatus">Montado</span>
-                  </div>
-                  <div class="steps-grid">
-                    <button class="step-chip active" data-stage="0.35">
-                      <small>Passo 01</small>
-                      <strong>Caixa &amp; Divisões</strong>
-                    </button>
-                    <button class="step-chip" data-stage="1">
-                      <small>Passo 02</small>
-                      <strong>Acabamento</strong>
-                    </button>
-                  </div>
-                  <button class="btn btn-moss btn-block" id="animateBuildBtn">
-                    Ver montagem completa
-                  </button>
-                </div>
-
-                <div class="glass-subcard swatch-card">
-                  <span class="swatch-title">Madeira base</span>
-                  <div class="swatch-row" role="radiogroup" aria-label="Cor e acabamento base da madeira">
-                    <button class="swatch-btn active" data-finish="espresso" style="--swatch-color: #4A3525;" aria-label="Madeira Nogueira" title="Madeira Nogueira (#4A3525)"></button>
-                    <button class="swatch-btn" data-finish="oat" style="--swatch-color: #DFD2BE;" aria-label="Linho Carvalho Claro" title="Carvalho Claro / Linho"></button>
-                    <button class="swatch-btn" data-finish="sage" style="--swatch-color: #3D5245;" aria-label="Verde-Musgo" title="Verde-Musgo (#3D5245)"></button>
-                    <button class="swatch-btn" data-finish="terracotta" style="--swatch-color: #C86D51;" aria-label="Terracota Cobre" title="Terracota / Cobre (#C86D51)"></button>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div style="display:flex; gap:0.5rem;">
+            <button id="btn-view-front" class="btn btn-outline btn-sm">Vista Frontal</button>
+            <button id="btn-view-back" class="btn btn-outline btn-sm">Vista Traseira (Prateleiras)</button>
           </div>
         </div>
       </div>
-    </section>
+    </div>
 
-    <!-- SEÇÃO: O OFÍCIO & DESIGN DE MOBILIÁRIO -->
-    <section id="oficina" class="craft-section">
-      <div class="section-header reveal-up">
-        <span class="meta-pill"><i class="dot"></i> Design &amp; Engenharia ZacFurniture</span>
-        <h2>Cada encaixe calculado do primeiro corte à instalação.</h2>
+    <!-- Painel de Engenharia, Plano de Corte e Orçamento -->
+    <aside class="tech-panel">
+      <div>
+        <h3 style="font-size:1.1rem; font-weight:800; margin-bottom:0.2rem;">Especificação Estrutural</h3>
+        <p style="font-size:0.82rem; color:var(--primary-walnut-light);">Cálculo instantâneo de chapas, iluminação e ferragens</p>
       </div>
 
-      <div class="craft-grid">
-        <article class="craft-card reveal-up">
-          <div class="craft-number">01</div>
-          <h3>Studio Editor Paramétrico</h3>
-          <p>
-            Abra o editor 3D dedicado para redimensionar chapas, acrescentar prateleiras traseiras, divisórias internas, portas ou remover componentes com atualização instantânea do plano de corte.
-          </p>
-        </article>
-
-        <article class="craft-card reveal-up delay-1">
-          <div class="craft-number">02</div>
-          <h3>Ripados &amp; LED Frio ou Quente</h3>
-          <p>
-            Perfis de alumínio difusor embutidos em canais fresados com opção de luz branca fria (6000K) para áreas comerciais e bancadas ou luz quente (3000K) para ambientes acolhedores.
-          </p>
-        </article>
-
-        <article class="craft-card reveal-up delay-2">
-          <div class="craft-number">03</div>
-          <h3>Mapa 3D de Parafusos &amp; Dobradiças</h3>
-          <p>
-            No Modo Detalhado, cada parafuso Confirmat, cavilha, corrediça telescópica e dobradiça de caneco 35 mm aparece posicionado diretamente nas peças para guiar a montagem sem erros.
-          </p>
-        </article>
+      <div class="spec-grid">
+        <div class="spec-box">
+          <small>Largura</small>
+          <strong id="spec-w">180 cm</strong>
+        </div>
+        <div class="spec-box">
+          <small>Altura</small>
+          <strong id="spec-h">95 cm</strong>
+        </div>
+        <div class="spec-box">
+          <small>Profundidade</small>
+          <strong id="spec-d">60 cm</strong>
+        </div>
       </div>
-    </section>
 
-    <!-- SEÇÃO: CATÁLOGO DE +1.500 MODELOS ESTRUTURAIS -->
-    <section id="catalogo" class="catalog-section">
-      <div class="section-header reveal-up">
-        <span class="meta-pill"><i class="dot"></i> Catálogo Estrutural ZacFurniture</span>
-        <h2>Mais de 1.500 estruturas diferentes para montar ou editar.</h2>
-        <p class="section-desc">
-          Cada modelo abaixo possui uma configuração estrutural única (divisórias, gaveteiros, prateleiras traseiras, LED frio/quente, número de portas e proporções). Depois de escolher, pinte como quiser no Modo Pintor ou personalize no Studio Editor.
+      <div id="feature-badges" class="feature-badges"></div>
+
+      <div id="hardware-legend" class="hardware-legend hidden">
+        <strong>🔩 Mapa de Ferragens Ativo (Modo Detalhado):</strong>
+        <p id="hardware-summary" style="margin-top:0.3rem;"></p>
+      </div>
+
+      <div class="cutlist-box">
+        <h4>
+          <span>Plano de Corte (MDF 20mm)</span>
+          <span id="sheets-count" style="color:var(--secondary-terracotta);">2 chapas</span>
+        </h4>
+        <table class="cutlist-table">
+          <thead>
+            <tr>
+              <th>Peça</th>
+              <th>Medida (L × A × E)</th>
+            </tr>
+          </thead>
+          <tbody id="cutlist-body"></tbody>
+        </table>
+      </div>
+
+      <div class="quote-bar">
+        <div class="quote-price">
+          <small>Estimativa Projeto Completo</small>
+          <strong id="quote-total">R$ 1.890</strong>
+        </div>
+        <button id="btn-request-quote" class="btn btn-moss">Solicitar Orçamento</button>
+      </div>
+    </aside>
+  </section>
+
+  <!-- Catálogo de 1.500 Modelos Estruturais -->
+  <section id="catalogo" class="catalog-section">
+    <div class="section-header">
+      <div>
+        <h2>Catálogo Estrutural — 1.500 Projetos Únicos</h2>
+        <p>
+          1.500 engenharias estruturais diferentes (vãos, divisórias, prateleiras traseiras, ripados e módulos) no acabamento padrão Nogueira. Para personalizar cores, abra qualquer modelo no Modo Editor.
         </p>
       </div>
-
-      <div class="cat-controls">
-        <input type="search" id="catalogSearch" placeholder="Buscar estrutura: balcão ripado LED frio, divisória, guarda-roupa 6 portas, metalon..." aria-label="Buscar modelo estrutural" />
-        <div class="cat-filters" role="group" aria-label="Filtrar por categoria estrutural">
-          <button type="button" class="cat-filter active" data-fam="all">Todos</button>
-          <button type="button" class="cat-filter" data-fam="r">Ripados &amp; LED</button>
-          <button type="button" class="cat-filter" data-fam="m">Marcenaria &amp; Armários</button>
-          <button type="button" class="cat-filter" data-fam="c">Cozinha &amp; Banho</button>
-          <button type="button" class="cat-filter" data-fam="s">Serralheria Metalon</button>
-        </div>
-        <span class="cat-count" id="catalogCount"></span>
-      </div>
-
-      <div class="cat-grid" id="catalogGrid"></div>
-      <button type="button" class="btn btn-outline-walnut cat-more" id="catalogMore">Carregar mais estruturas</button>
-    </section>
-
-    <!-- SEÇÃO: COLEÇÕES AUTORAIS -->
-    <section id="projetos" class="works-section">
-      <div class="section-header reveal-up">
-        <span class="meta-pill"><i class="dot"></i> Coleções ZacFurniture</span>
-        <h2>Soluções arquitetônicas prontas para adaptar ao seu espaço.</h2>
-      </div>
-
-      <div class="works-grid">
-        <article class="work-card reveal-up" data-preset-prompt="Quero criar um balcão ripado de 180cm com iluminação LED Frio, com divisória e prateleira atrás">
-          <div class="work-media">
-            <img src="./assets/balcao-ripado.jpg" alt="Balcão ripado de 180cm com LED frio, divisória e prateleira traseira" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-            <div class="work-fallback wood-pattern-2">
-              <span>Balcão Ripado 180cm · LED Frio</span>
-            </div>
-          </div>
-          <div class="work-body">
-            <div class="work-meta">Recepção &amp; Comercial · LED Frio 6000K</div>
-            <h3>Balcão Ripado com Divisória &amp; Prateleira Atrás</h3>
-            <p>Frente ripada em madeira nogueira com canal de LED branco frio, divisória estrutural central e prateleiras traseiras para organização interna.</p>
-            <button class="text-action">Montar este modelo no 3D &rarr;</button>
-          </div>
-        </article>
-
-        <article class="work-card reveal-up delay-1" data-preset-prompt="Quero criar um armário de pia de 130cm com cuba inox, 2 portas e gaveteiro">
-          <div class="work-media">
-            <img src="./assets/gabinete-banheiro.jpg" alt="Armário de pia em madeira nogueira com bancada e cuba" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-            <div class="work-fallback wood-pattern-1">
-              <span>Gabinete de Pia Sob Medida</span>
-            </div>
-          </div>
-          <div class="work-body">
-            <div class="work-meta">Cozinha &amp; Lavabo · Madeira Nogueira</div>
-            <h3>Armário de Pia com Cuba Inox &amp; Gaveteiro</h3>
-            <p>Estrutura resistente à umidade com divisória interna, prateleira regulável e gavetas com corrediças telescópicas ocultas.</p>
-            <button class="text-action">Montar este modelo no 3D &rarr;</button>
-          </div>
-        </article>
-
-        <article class="work-card reveal-up delay-2" data-preset-prompt="Quero criar um guarda-roupa de 210cm por 220cm com 4 portas, cabideiro, maleiro e gavetas">
-          <div class="work-media">
-            <img src="./assets/bancada-gourmet.jpg" alt="Guarda-roupa planejado piso-teto em madeira" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-            <div class="work-fallback wood-pattern-3">
-              <span>Guarda-Roupa Arquitetônico</span>
-            </div>
-          </div>
-          <div class="work-body">
-            <div class="work-meta">Dormitório &amp; Closet · Piso-Teto</div>
-            <h3>Guarda-Roupa com Maleiro &amp; Divisória Central</h3>
-            <p>Aproveitamento integral com cabideiro metálico, nichos internos, gaveteiro e dobradiças com amortecimento silencioso.</p>
-            <button class="text-action">Montar este modelo no 3D &rarr;</button>
-          </div>
-        </article>
-      </div>
-    </section>
-
-    <!-- SEÇÃO: CONTATO & ORÇAMENTO -->
-    <section id="contato" class="contact-section">
-      <div class="contact-card reveal-up">
-        <div class="contact-info">
-          <span class="meta-pill"><i class="dot"></i> Orçamento Direto ZacFurniture</span>
-          <h2>Vamos produzir o seu projeto sob medida?</h2>
-          <p>
-            As medidas, peças adicionadas no Studio Editor, lista de parafusos/dobradiças e pinturas personalizadas já são anexadas automaticamente ao seu pedido.
-          </p>
-
-          <div class="palette-legend">
-            <div class="legend-item">
-              <span class="swatch-dot" style="background:#F7F5F0;"></span>
-              <div>
-                <strong>Off-White / Linho (#F7F5F0)</strong>
-                <small>Base neutra arquitetônica</small>
-              </div>
-            </div>
-            <div class="legend-item">
-              <span class="swatch-dot" style="background:#4A3525;"></span>
-              <div>
-                <strong>Madeira Nogueira (#4A3525)</strong>
-                <small>Estrutura e veios naturais</small>
-              </div>
-            </div>
-            <div class="legend-item">
-              <span class="swatch-dot" style="background:#C86D51;"></span>
-              <div>
-                <strong>Terracota / Cobre (#C86D51)</strong>
-                <small>Calor artesanal e detalhes</small>
-              </div>
-            </div>
-            <div class="legend-item">
-              <span class="swatch-dot" style="background:#3D5245;"></span>
-              <div>
-                <strong>Verde-Musgo (#3D5245)</strong>
-                <small>Acabamento sustentável</small>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <form class="contact-form" id="quoteForm">
-          <div class="field-group">
-            <label for="clientName">Seu nome</label>
-            <input type="text" id="clientName" placeholder="Como podemos te chamar?" required />
-          </div>
-
-          <div class="field-group">
-            <label for="projectType">Móvel criado / editado</label>
-            <input type="text" id="projectType" value="Balcão Ripado 180cm · LED Frio (180 × 95 × 58 cm)" required />
-          </div>
-
-          <div class="field-group">
-            <label for="finishChoice">Acabamento principal</label>
-            <select id="finishChoice">
-              <option value="Madeira Nogueira (#4A3525)">Madeira Nogueira (#4A3525)</option>
-              <option value="Linho / Carvalho Claro (#DFD2BE)">Linho / Carvalho Claro (#DFD2BE)</option>
-              <option value="Verde-Musgo Acetinado (#3D5245)">Verde-Musgo Acetinado (#3D5245)</option>
-              <option value="Terracota / Cobre (#C86D51)">Terracota / Cobre (#C86D51)</option>
-            </select>
-          </div>
-
-          <div class="field-group">
-            <label for="projectNotes">Especificações técnicas, divisórias, LED e pinturas</label>
-            <textarea id="projectNotes" rows="3" placeholder="Detalhes do seu projeto..."></textarea>
-          </div>
-
-          <button type="submit" class="btn btn-moss btn-lg btn-block">
-            Enviar projeto pelo WhatsApp
-          </button>
-          <button type="button" class="btn btn-outline-walnut btn-block" id="saveImageBtn">
-            Baixar render 3D em PNG
-          </button>
-          <p class="form-feedback" id="formFeedback" role="status"></p>
-        </form>
-      </div>
-    </section>
-  </main>
-
-  <footer class="site-footer">
-    <div class="footer-inner">
-      <div class="brand footer-brand">
-        <span class="brand-mark" aria-hidden="true"></span>
-        <div class="brand-stack">
-          <span class="brand-name">ZacFurniture</span>
-          <span class="brand-sub">Furniture Designer</span>
-        </div>
-      </div>
-      <p>Design autoral de mobiliário, engenharia paramétrica 3D &amp; marcenaria sob medida.</p>
+      <div style="font-weight:800; color:var(--accent-moss);" id="catalog-counter">Exibindo 1.500 estruturas</div>
     </div>
+
+    <div class="catalog-filters">
+      <input type="text" id="filter-search" placeholder="Buscar por código (ex: ZF-0142) ou estrutura..." />
+      <select id="filter-category">
+        <option value="all">Todas as Categorias (15)</option>
+        <option value="balcao">Balcão Gourmet / Recepção</option>
+        <option value="painel">Painel Ripado & Rack TV</option>
+        <option value="estante">Estante Arquitetônica</option>
+        <option value="ilha">Ilha Central Multifuncional</option>
+        <option value="aparador">Aparador Estrutural</option>
+        <option value="mesa">Mesa de Jantar / Reunião</option>
+        <option value="escrivaninha">Estação Home Office</option>
+        <option value="rack">Rack Baixo</option>
+        <option value="armario">Armário Alto</option>
+        <option value="cristaleira">Cristaleira</option>
+        <option value="comoda">Cômoda Modular</option>
+        <option value="nicho">Nichos Geométricos</option>
+        <option value="bancada">Bancada de Atendimento</option>
+        <option value="roupeiro">Guarda-Roupa</option>
+        <option value="bar">Cantinho do Café / Bar</option>
+      </select>
+      <select id="filter-structure">
+        <option value="all">Qualquer Estrutura</option>
+        <option value="rear">Com Prateleira Traseira</option>
+        <option value="ripado">Com Painel Ripado</option>
+        <option value="dividers">Com Divisórias Internas</option>
+        <option value="led">Com Iluminação LED</option>
+        <option value="doors">Com Portas / Dobradiças</option>
+      </select>
+    </div>
+
+    <div id="catalog-grid" class="catalog-grid"></div>
+
+    <div class="pagination-bar">
+      <button id="prev-page" class="btn btn-outline btn-sm">← Anterior</button>
+      <span id="page-indicator" style="font-weight:700; font-size:0.9rem;">Página 1 de 63</span>
+      <button id="next-page" class="btn btn-outline btn-sm">Próxima →</button>
+    </div>
+  </section>
+
+  <!-- Rodapé -->
+  <footer class="footer">
+    <div>
+      <strong>ZacFurniture — Furniture Designer</strong>
+      <p style="font-size:0.84rem; opacity:0.85;">Design paramétrico de móveis planejados e engenharia estrutural em 3D.</p>
+    </div>
+    <small>© 2026 ZacFurniture. Todos os projetos são exportáveis e editáveis no Studio 3D.</small>
   </footer>
 
-  <script type="module" src="./script.js"></script>
+  <div id="toast" class="toast"></div>
+
+  <script src="catalog.js"></script>
+  <script src="furniture-engine.js"></script>
+  <script>
+    const STORAGE_KEY = 'zacfurniture_active_project';
+    let currentProject = null;
+    let detailedMode = false;
+    let explodeFactor = 0;
+
+    // Configuração Three.js
+    const canvas = document.getElementById('main-3d-canvas');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(42, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
+    camera.position.set(2.1, 1.45, 2.35);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.target.set(0, 0.5, 0);
+
+    // Iluminação do estúdio
+    const hemiLight = new THREE.HemisphereLight(0xfffaf0, 0x8c735b, 0.9);
+    scene.add(hemiLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
+    dirLight.position.set(3, 5, 4);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+
+    const backLight = new THREE.DirectionalLight(0xf7f5f0, 0.45);
+    backLight.position.set(-3, 3, -4);
+    scene.add(backLight);
+
+    // Piso sutil de referência
+    const gridHelper = new THREE.GridHelper(5, 20, 0xc86d51, 0xd8cfc0);
+    gridHelper.material.opacity = 0.35;
+    gridHelper.material.transparent = true;
+    scene.add(gridHelper);
+
+    let furnitureRoot = new THREE.Group();
+    scene.add(furnitureRoot);
+
+    function resizeRenderer() {
+      const parent = canvas.parentElement;
+      const w = parent.clientWidth;
+      const h = parent.clientHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    window.addEventListener('resize', resizeRenderer);
+    resizeRenderer();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 3400);
+    }
+
+    function saveCurrentProject() {
+      if (currentProject) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(currentProject));
+      }
+    }
+
+    function renderProject(project) {
+      currentProject = project;
+      if (!currentProject.parts) {
+        currentProject.parts = ZacEngine.buildPartsFromSpec(currentProject);
+      }
+      saveCurrentProject();
+
+      // Limpa cena anterior
+      scene.remove(furnitureRoot);
+      const built = ZacEngine.createFurnitureGroup(currentProject, {
+        detailedMode,
+        explodeFactor
+      });
+      furnitureRoot = built.group;
+      scene.add(furnitureRoot);
+
+      // Atualiza textos e especificações
+      document.getElementById('active-model-title').textContent = currentProject.name;
+      document.getElementById('spec-w').textContent = `${currentProject.width} cm`;
+      document.getElementById('spec-h').textContent = `${currentProject.height} cm`;
+      document.getElementById('spec-d').textContent = `${currentProject.depth} cm`;
+
+      // Badges estruturais
+      const badges = [];
+      if (currentProject.parts.some(p => p.slatted)) badges.push('<span class="f-badge">Painel Ripado 3D</span>');
+      if (currentProject.parts.some(p => p.role === 'prateleira_tras')) badges.push('<span class="f-badge moss">Prateleiras Traseiras</span>');
+      if (currentProject.parts.some(p => p.role === 'divisoria')) badges.push('<span class="f-badge">Divisórias Internas</span>');
+      const ledPart = currentProject.parts.find(p => p.role === 'led');
+      if (ledPart) {
+        badges.push(`<span class="f-badge moss">LED ${ledPart.ledMode === 'frio' ? 'Frio 6500K' : 'Quente 3000K'}</span>`);
+      }
+      if (currentProject.parts.some(p => p.role === 'porta')) badges.push('<span class="f-badge">Portas com Dobradiças</span>');
+      document.getElementById('feature-badges').innerHTML = badges.join('') || '<span class="f-badge">Estrutura Modular Base</span>';
+
+      // BOM e Plano de Corte
+      const bom = ZacEngine.calculateProjectBOM(currentProject);
+      document.getElementById('sheets-count').textContent = `${bom.sheetsNeeded} chapa(s) MDF`;
+      document.getElementById('quote-total').textContent = `R$ ${bom.estimatedPrice.toLocaleString('pt-BR')}`;
+
+      const tbody = document.getElementById('cutlist-body');
+      tbody.innerHTML = bom.cutRows
+        .map(r => `<tr><td><strong>${r.name}</strong></td><td>${r.dimensions}</td></tr>`)
+        .join('');
+
+      // Legenda Modo Detalhado
+      const hwLegend = document.getElementById('hardware-legend');
+      if (detailedMode) {
+        hwLegend.classList.remove('hidden');
+        document.getElementById('hardware-summary').textContent =
+          `${bom.screwCount} parafusos estruturais marcados em azul/prata nas junções + ${bom.hingeCount} dobradiças caneco 35mm marcadas em cobre nas portas.`;
+      } else {
+        hwLegend.classList.add('hidden');
+      }
+    }
+
+    // Eventos do Prompt
+    document.getElementById('btn-generate').addEventListener('click', () => {
+      const promptText = document.getElementById('prompt-input').value;
+      const spec = ZacEngine.parseNaturalPrompt(promptText);
+      renderProject(spec);
+      showToast('Projeto gerado com sucesso! Gire o modelo 3D para conferir.');
+    });
+
+    document.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const text = chip.getAttribute('data-prompt');
+        document.getElementById('prompt-input').value = text;
+        const spec = ZacEngine.parseNaturalPrompt(text);
+        renderProject(spec);
+        showToast('Estrutura aplicada no visualizador 3D.');
+      });
+    });
+
+    // Toggle Modo Detalhado
+    document.getElementById('btn-detailed-mode').addEventListener('click', function () {
+      detailedMode = !detailedMode;
+      this.classList.toggle('active', detailedMode);
+      this.textContent = detailedMode ? '🔩 Modo Detalhado: ON (Ferragens)' : '🔩 Modo Detalhado: OFF';
+      renderProject(currentProject);
+    });
+
+    // Vista Explodida
+    document.getElementById('explode-slider').addEventListener('input', function () {
+      explodeFactor = parseFloat(this.value);
+      document.getElementById('explode-val').textContent = `${Math.round(explodeFactor * 100)}%`;
+      renderProject(currentProject);
+    });
+
+    // Câmeras Frontal e Traseira (para ver as prateleiras atrás!)
+    document.getElementById('btn-view-front').addEventListener('click', () => {
+      camera.position.set(0, 1.15, 2.55);
+      controls.target.set(0, 0.5, 0);
+    });
+
+    document.getElementById('btn-view-back').addEventListener('click', () => {
+      camera.position.set(0, 1.25, -2.55);
+      controls.target.set(0, 0.5, 0);
+      showToast('Vista traseira ativada para inspecionar prateleiras posteriores.');
+    });
+
+    document.getElementById('btn-request-quote').addEventListener('click', () => {
+      const bom = ZacEngine.calculateProjectBOM(currentProject);
+      showToast(`Orçamento técnico preparado: R$ ${bom.estimatedPrice.toLocaleString('pt-BR')} (${bom.cutRows.length} peças).`);
+    });
+
+    // =========================================================
+    // CATÁLOGO DE 1.500 MODELOS ESTRUTURAIS
+    // =========================================================
+    let filteredCatalog = [...window.ZAC_CATALOG];
+    let currentPage = 1;
+    const perPage = 24;
+
+    function renderCatalogSVG(m) {
+      // Gera diagrama esquemático estrutural SVG único para cada modelo
+      const cols = m.dividers + 1;
+      const colW = 140 / cols;
+      let lines = '';
+      for (let c = 1; c < cols; c++) {
+        const x = 30 + c * colW;
+        lines += `<line x1="${x}" y1="22" x2="${x}" y2="92" stroke="#4A3525" stroke-width="2"/>`;
+      }
+      for (let s = 1; s <= m.frontShelves; s++) {
+        const y = 22 + (70 / (m.frontShelves + 1)) * s;
+        lines += `<line x1="30" y1="${y}" x2="170" y2="${y}" stroke="#4A3525" stroke-width="1.6"/>`;
+      }
+      if (m.rearShelves > 0) {
+        lines += `<line x1="34" y1="54" x2="166" y2="54" stroke="#C86D51" stroke-width="1.8" stroke-dasharray="4 3"/>`;
+      }
+      if (m.slatZone !== 'none') {
+        for (let rx = 34; rx < 168; rx += 6) {
+          lines += `<line x1="${rx}" y1="24" x2="${rx}" y2="90" stroke="#4A3525" stroke-opacity="0.32" stroke-width="1.5"/>`;
+        }
+      }
+      const ledBar = m.ledMode
+        ? `<line x1="32" y1="25" x2="168" y2="25" stroke="${m.ledMode === 'frio' ? '#38BDF8' : '#F59E0B'}" stroke-width="3"/>`
+        : '';
+
+      return `
+        <svg width="200" height="110" viewBox="0 0 200 110">
+          <rect x="28" y="20" width="144" height="74" rx="3" fill="#DFD5C3" stroke="#4A3525" stroke-width="2.5"/>
+          ${lines}
+          ${ledBar}
+        </svg>
+      `;
+    }
+
+    function applyCatalogFilters() {
+      const q = document.getElementById('filter-search').value.toLowerCase().trim();
+      const cat = document.getElementById('filter-category').value;
+      const struct = document.getElementById('filter-structure').value;
+
+      filteredCatalog = window.ZAC_CATALOG.filter(m => {
+        if (cat !== 'all' && m.category !== cat) return false;
+        if (struct === 'rear' && m.rearShelves === 0) return false;
+        if (struct === 'ripado' && m.slatZone === 'none') return false;
+        if (struct === 'dividers' && m.dividers === 0) return false;
+        if (struct === 'led' && !m.ledMode) return false;
+        if (struct === 'doors' && m.doors === 0) return false;
+        if (q && !m.name.toLowerCase().includes(q) && !m.id.toLowerCase().includes(q)) return false;
+        return true;
+      });
+
+      currentPage = 1;
+      renderCatalogPage();
+    }
+
+    function renderCatalogPage() {
+      const grid = document.getElementById('catalog-grid');
+      const totalPages = Math.max(1, Math.ceil(filteredCatalog.length / perPage));
+      const start = (currentPage - 1) * perPage;
+      const slice = filteredCatalog.slice(start, start + perPage);
+
+      document.getElementById('catalog-counter').textContent = `Exibindo ${filteredCatalog.length} estruturas distintas`;
+      document.getElementById('page-indicator').textContent = `Página ${currentPage} de ${totalPages}`;
+
+      grid.innerHTML = slice.map(m => `
+        <article class="model-card">
+          <div class="model-blueprint-preview">
+            <span class="model-code-tag">${m.id}</span>
+            <span class="model-arch-tag">${m.dividers} div • ${m.rearShelves} prat. trás</span>
+            ${renderCatalogSVG(m)}
+          </div>
+          <h4>${m.name}</h4>
+          <div class="model-meta">${m.width} × ${m.height} × ${m.depth} cm • Acabamento Nogueira</div>
+          <div class="model-tags">
+            ${m.slatZone !== 'none' ? '<span>Ripado</span>' : ''}
+            ${m.rearShelves > 0 ? `<span>${m.rearShelves} Prat. Atrás</span>` : ''}
+            ${m.dividers > 0 ? `<span>${m.dividers} Divisórias</span>` : ''}
+            ${m.doors > 0 ? `<span>${m.doors} Portas</span>` : ''}
+            ${m.ledMode ? `<span>LED ${m.ledMode}</span>` : ''}
+          </div>
+          <div class="model-actions">
+            <button class="btn btn-outline btn-sm" onclick="loadCatalogModel('${m.id}', false)">Ver em 3D</button>
+            <button class="btn btn-moss btn-sm" onclick="loadCatalogModel('${m.id}', true)">Editar Peça</button>
+          </div>
+        </article>
+      `).join('');
+    }
+
+    window.loadCatalogModel = function (id, goToEditor) {
+      const found = window.ZAC_CATALOG.find(m => m.id === id);
+      if (!found) return;
+      const project = {
+        ...found,
+        parts: ZacEngine.buildPartsFromSpec(found)
+      };
+      renderProject(project);
+      if (goToEditor) {
+        window.location.href = 'editor.html';
+      } else {
+        document.getElementById('estudio-3d').scrollIntoView({ behavior: 'smooth' });
+        showToast(`Modelo estrutural ${found.id} carregado no palco 3D!`);
+      }
+    };
+
+    document.getElementById('filter-search').addEventListener('input', applyCatalogFilters);
+    document.getElementById('filter-category').addEventListener('change', applyCatalogFilters);
+    document.getElementById('filter-structure').addEventListener('change', applyCatalogFilters);
+
+    document.getElementById('prev-page').addEventListener('click', () => {
+      if (currentPage > 1) {
+        currentPage--;
+        renderCatalogPage();
+      }
+    });
+
+    document.getElementById('next-page').addEventListener('click', () => {
+      const totalPages = Math.ceil(filteredCatalog.length / perPage);
+      if (currentPage < totalPages) {
+        currentPage++;
+        renderCatalogPage();
+      }
+    });
+
+    // Inicialização: verifica se voltou do Modo Editor ou gera o pedido inicial
+    (function init() {
+      const params = new URLSearchParams(window.location.search);
+      const savedRaw = localStorage.getItem(STORAGE_KEY);
+
+      if (params.get('fromEditor') === '1' && savedRaw) {
+        try {
+          const edited = JSON.parse(savedRaw);
+          renderProject(edited);
+          showToast('Projeto salvo no Modo Editor carregado no site principal!');
+        } catch (e) {
+          renderProject(ZacEngine.parseNaturalPrompt(document.getElementById('prompt-input').value));
+        }
+      } else if (savedRaw) {
+        try {
+          renderProject(JSON.parse(savedRaw));
+        } catch (e) {
+          renderProject(ZacEngine.parseNaturalPrompt(document.getElementById('prompt-input').value));
+        }
+      } else {
+        renderProject(ZacEngine.parseNaturalPrompt(document.getElementById('prompt-input').value));
+      }
+
+      renderCatalogPage();
+    })();
+  </script>
 </body>
 </html>
