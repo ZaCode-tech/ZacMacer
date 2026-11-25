@@ -1,4 +1,3 @@
-```javascript
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
@@ -56,7 +55,6 @@ function createWoodTextures(finishKey) {
   bCtx.fillStyle = '#808080';
   bCtx.fillRect(0, 0, size, size);
 
-  // Veios orgânicos da madeira
   const lineCount = cfg.isLacquer ? 90 : 210;
   for (let i = 0; i < lineCount; i++) {
     const xBase = (i / lineCount) * size;
@@ -92,7 +90,6 @@ function createWoodTextures(finishKey) {
     bCtx.stroke();
   }
 
-  // Poros finos verticais
   if (!cfg.isLacquer) {
     for (let p = 0; p < 900; p++) {
       const px = Math.random() * size;
@@ -125,7 +122,7 @@ const scene = new THREE.Scene();
 
 const camera = new THREE.PerspectiveCamera(
   38,
-  container.clientWidth / container.clientHeight,
+  Math.max(container.clientWidth, 1) / Math.max(container.clientHeight, 1),
   0.1,
   50
 );
@@ -144,7 +141,6 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.12;
 container.appendChild(renderer.domElement);
 
-// Ambiente reflexivo realista para ferragens e pedra
 const pmremGenerator = new THREE.PMREMGenerator(renderer);
 scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
 scene.environmentIntensity = 0.55;
@@ -157,7 +153,6 @@ controls.maxDistance = 5.4;
 controls.maxPolarAngle = Math.PI * 0.49;
 controls.target.set(0, 0.52, 0);
 
-// Iluminação arquitetônica quente
 const hemiLight = new THREE.HemisphereLight(0xfff5e8, 0x2b1d16, 0.75);
 scene.add(hemiLight);
 
@@ -178,7 +173,6 @@ const rimLight = new THREE.DirectionalLight(0x9caf88, 0.65);
 rimLight.position.set(-3.0, 2.5, -2.5);
 scene.add(rimLight);
 
-// Piso invisível receptor de sombra suave
 const shadowFloor = new THREE.Mesh(
   new THREE.PlaneGeometry(12, 12),
   new THREE.ShadowMaterial({ opacity: 0.34 })
@@ -188,7 +182,6 @@ shadowFloor.position.y = 0;
 shadowFloor.receiveShadow = true;
 scene.add(shadowFloor);
 
-// Base circular sutil de apresentação
 const plinthGeo = new THREE.CylinderGeometry(1.38, 1.42, 0.025, 64);
 const plinthMat = new THREE.MeshStandardMaterial({
   color: 0x221610,
@@ -230,27 +223,23 @@ function createWoodMaterial(rotateGrain = false) {
 const woodVerticalMat = createWoodMaterial(false);
 const woodHorizontalMat = createWoodMaterial(true);
 
-// Pedra Quartzo Oat (#E9DFCF)
 const stoneMat = new THREE.MeshStandardMaterial({
   color: 0xefe7da,
   roughness: 0.22,
   metalness: 0.04
 });
 
-// Metal cromado / escovado para torneira, puxadores e dobradiças
 const chromeMat = new THREE.MeshStandardMaterial({
   color: 0xe6e8ea,
   roughness: 0.16,
   metalness: 0.92
 });
 
-// Interior escuro das tubulações / cavidade
 const cavityMat = new THREE.MeshStandardMaterial({
   color: 0x231711,
   roughness: 0.8
 });
 
-// Luz LED quente para o Balcão Ripado
 const ledStripMat = new THREE.MeshStandardMaterial({
   color: 0xffd27d,
   emissive: 0xffaa2b,
@@ -296,9 +285,7 @@ function clearFurniture() {
   ledStripMat.emissiveIntensity = 0;
 }
 
-/* --------------------------------------------------------------------------
-   MODELO A: GABINETE SUSPENSO DE BANHEIRO
-   -------------------------------------------------------------------------- */
+/* MODELO A: GABINETE SUSPENSO DE BANHEIRO */
 function buildVanityCabinet() {
   clearFurniture();
   const w = 1.48;
@@ -307,28 +294,23 @@ function buildVanityCabinet() {
   const t = 0.022;
   const baseY = 0.24;
 
-  // 1. Base inferior
   const bottom = new THREE.Mesh(new THREE.BoxGeometry(w, t, d), woodHorizontalMat);
   bottom.position.set(0, baseY + t / 2, 0);
   registerPart(bottom, { x: 0, y: -0.35, z: 0.25 }, 0);
 
-  // 2. Lateral esquerda
   const leftSide = new THREE.Mesh(new THREE.BoxGeometry(t, h - t, d), woodVerticalMat);
   leftSide.position.set(-w / 2 + t / 2, baseY + h / 2 + t / 2, 0);
   registerPart(leftSide, { x: -0.45, y: 0.1, z: 0 }, 1);
 
-  // 3. Lateral direita
   const rightSide = new THREE.Mesh(new THREE.BoxGeometry(t, h - t, d), woodVerticalMat);
   rightSide.position.set(w / 2 - t / 2, baseY + h / 2 + t / 2, 0);
   registerPart(rightSide, { x: 0.45, y: 0.1, z: 0 }, 1);
 
-  // 4. Divisória central
   const dividerX = 0.22;
   const divider = new THREE.Mesh(new THREE.BoxGeometry(t, h - t, d - 0.03), woodVerticalMat);
   divider.position.set(dividerX, baseY + h / 2 + t / 2, -0.01);
   registerPart(divider, { x: 0, y: 0.35, z: -0.2 }, 2);
 
-  // 5. Prateleira interna esquerda + travessa superior frontal
   const leftSpan = dividerX - (-w / 2 + t);
   const leftCenterX = (-w / 2 + t) + leftSpan / 2;
 
@@ -340,7 +322,6 @@ function buildVanityCabinet() {
   frontRail.position.set(leftCenterX, baseY + h - 0.028, d / 2 - t / 2);
   registerPart(frontRail, { x: 0, y: 0.25, z: 0.35 }, 3);
 
-  // 6. Três gavetas à direita
   const drawerSpan = (w / 2 - t) - (dividerX + t / 2);
   const drawerCenterX = (dividerX + t / 2) + drawerSpan / 2;
   const drawerH = (h - t - 0.016) / 3;
@@ -375,7 +356,6 @@ function buildVanityCabinet() {
     });
   }
 
-  // 7. Duas portas articuladas à esquerda com dobradiças metálicas
   const doorW = (leftSpan - 0.008) / 2;
   const doorH = h - 0.068;
   const doorY = baseY + t + doorH / 2;
@@ -422,7 +402,6 @@ function buildVanityCabinet() {
     openRotY: Math.PI * 0.38
   });
 
-  // 8. Tampo de Quartzo Oat com Cuba Embutida e Torneira Cromada
   const topGroup = new THREE.Group();
   topGroup.position.set(0, baseY + h + 0.02, 0.01);
 
@@ -448,9 +427,7 @@ function buildVanityCabinet() {
   registerPart(topGroup, { x: 0, y: 0.65, z: 0 }, 6);
 }
 
-/* --------------------------------------------------------------------------
-   MODELO B: BALCÃO RIPADO COM LED QUENTE
-   -------------------------------------------------------------------------- */
+/* MODELO B: BALCÃO RIPADO COM LED QUENTE */
 function buildSlattedCounter() {
   clearFurniture();
   const w = 1.78;
@@ -458,7 +435,6 @@ function buildSlattedCounter() {
   const d = 0.56;
   const t = 0.025;
 
-  // 1. Base e caixa interna estrutural
   const base = new THREE.Mesh(new THREE.BoxGeometry(w - 0.04, t, d - 0.04), woodHorizontalMat);
   base.position.set(0, t / 2, 0);
   registerPart(base, { x: 0, y: -0.25, z: 0 }, 0);
@@ -467,7 +443,6 @@ function buildSlattedCounter() {
   coreBox.position.set(0, (h - 0.08) / 2 + t, -0.01);
   registerPart(coreBox, { x: 0, y: 0.35, z: -0.35 }, 1);
 
-  // 2. 32 Ripas Verticais de Madeira
   const slatCount = 32;
   const slatW = 0.024;
   const slatDepth = 0.022;
@@ -488,7 +463,6 @@ function buildSlattedCounter() {
     registerPart(slat, { x: (i - slatCount / 2) * 0.012, y: waveY, z: waveZ }, 2 + i * 0.04);
   }
 
-  // Ripas laterais esquerda e direita
   const sideSlatCount = 9;
   const sideStartZ = -(d - 0.08) / 2 + slatW / 2;
   const sideStepZ = (d - 0.08 - slatW) / (sideSlatCount - 1);
@@ -511,7 +485,6 @@ function buildSlattedCounter() {
     registerPart(rightSlat, { x: 0.48, y: 0.12, z: 0 }, 3.3);
   }
 
-  // 3. Canaleta de LED quente embutida sob o tampo
   const ledBar = new THREE.Mesh(
     new THREE.BoxGeometry(w - 0.04, 0.014, 0.018),
     ledStripMat
@@ -523,7 +496,6 @@ function buildSlattedCounter() {
   ledLight.position.set(0, h - 0.08, d / 2 + 0.18);
   furnitureRoot.add(ledLight);
 
-  // 4. Tampo superior encabeçado em madeira nobre
   const counterTop = new THREE.Mesh(
     new THREE.BoxGeometry(w + 0.05, 0.042, d + 0.05),
     woodHorizontalMat
@@ -532,9 +504,7 @@ function buildSlattedCounter() {
   registerPart(counterTop, { x: 0, y: 0.65, z: 0 }, 5);
 }
 
-/* --------------------------------------------------------------------------
-   MODELO C: BANCADA GOURMET COM 4 PORTAS
-   -------------------------------------------------------------------------- */
+/* MODELO C: BANCADA GOURMET COM 4 PORTAS */
 function buildGourmetBench() {
   clearFurniture();
   const w = 1.88;
@@ -542,12 +512,10 @@ function buildGourmetBench() {
   const d = 0.56;
   const t = 0.024;
 
-  // 1. Base e quadro estrutural em madeira
   const bottom = new THREE.Mesh(new THREE.BoxGeometry(w, t, d), woodHorizontalMat);
   bottom.position.set(0, 0.06, 0);
   registerPart(bottom, { x: 0, y: -0.25, z: 0 }, 0);
 
-  // 5 montantes verticais do quadro
   for (let i = 0; i < 5; i++) {
     const px = -w / 2 + t / 2 + i * ((w - t) / 4);
     const post = new THREE.Mesh(new THREE.BoxGeometry(0.055, h - 0.08, d - 0.04), woodVerticalMat);
@@ -555,12 +523,10 @@ function buildGourmetBench() {
     registerPart(post, { x: (i - 2) * 0.12, y: 0.35, z: -0.25 }, 1);
   }
 
-  // Travessa superior do quadro
   const topRail = new THREE.Mesh(new THREE.BoxGeometry(w, 0.08, t), woodHorizontalMat);
   topRail.position.set(0, h - 0.04, d / 2 - t / 2);
   registerPart(topRail, { x: 0, y: 0.45, z: 0.35 }, 2);
 
-  // 2. Quatro portas almofadadas com puxadores cromados
   const doorAreaW = w - 0.12;
   const singleDoorW = (doorAreaW - 0.036) / 4;
   const doorH = h - 0.18;
@@ -602,7 +568,6 @@ function buildGourmetBench() {
     });
   }
 
-  // 3. Bancada superior em pedra branca Oat
   const stoneTop = new THREE.Mesh(new THREE.BoxGeometry(w + 0.04, 0.04, d + 0.04), stoneMat);
   stoneTop.position.set(0, h + 0.02, 0.01);
   registerPart(stoneTop, { x: 0, y: 0.68, z: 0 }, 5);
@@ -700,7 +665,6 @@ function applyFinish(finishKey) {
   });
 }
 
-// Eventos dos botões de modelo
 document.querySelectorAll('.piece-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.piece-btn').forEach((b) => {
@@ -713,7 +677,6 @@ document.querySelectorAll('.piece-btn').forEach((btn) => {
   });
 });
 
-// Cartões da galeria também carregam o móvel no palco
 document.querySelectorAll('.work-card[data-select-model]').forEach((card) => {
   card.addEventListener('click', () => {
     const targetModel = card.dataset.selectModel;
@@ -727,7 +690,6 @@ document.querySelectorAll('.work-card[data-select-model]').forEach((card) => {
   });
 });
 
-// Eventos das amostras de cor (Espresso, Oat, Sage Green)
 document.querySelectorAll('.swatch-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.swatch-btn').forEach((b) => b.classList.remove('active'));
@@ -736,7 +698,6 @@ document.querySelectorAll('.swatch-btn').forEach((btn) => {
   });
 });
 
-// Botões de montagem e etapas
 document.getElementById('replayBtn').addEventListener('click', triggerFullAssembly);
 document.getElementById('animateBuildBtn').addEventListener('click', triggerFullAssembly);
 
@@ -751,7 +712,6 @@ document.querySelectorAll('.step-chip').forEach((chip) => {
   });
 });
 
-// Controle deslizante manual de encaixe / vista explodida
 explodeRange.addEventListener('input', (e) => {
   isAutoBuilding = false;
   const explodeRatio = Number(e.target.value) / 100;
@@ -759,7 +719,6 @@ explodeRange.addEventListener('input', (e) => {
   assemblyStatus.textContent = explodeRatio > 0.05 ? 'Vista explodida' : 'Montado';
 });
 
-// Abrir / fechar portas e gavetas
 doorsBtn.addEventListener('click', () => {
   if (currentModelKey === 'counter') {
     const isBright = ledStripMat.emissiveIntensity > 1.2;
@@ -772,7 +731,6 @@ doorsBtn.addEventListener('click', () => {
   doorsBtnText.textContent = doorsOpen ? 'Fechar portas' : 'Abrir portas';
 });
 
-// Loop principal de renderização
 const clock = new THREE.Clock();
 
 function animate() {
@@ -839,12 +797,17 @@ function animate() {
   renderer.render(scene, camera);
 }
 
-window.addEventListener('resize', () => {
+function resizeStage() {
   if (!container) return;
-  camera.aspect = container.clientWidth / container.clientHeight;
+  const width = Math.max(container.clientWidth, 1);
+  const height = Math.max(container.clientHeight, 1);
+  camera.aspect = width / height;
   camera.updateProjectionMatrix();
-  renderer.setSize(container.clientWidth, container.clientHeight);
-});
+  renderer.setSize(width, height);
+}
+
+window.addEventListener('resize', resizeStage);
+resizeStage();
 
 loadModel('vanity');
 animate();
@@ -888,4 +851,3 @@ quoteForm.addEventListener('submit', (e) => {
   formFeedback.textContent = `Obrigado, ${name}! Recebemos seu interesse em ${project} (${finish}) e retornaremos em breve.`;
   quoteForm.reset();
 });
-```
