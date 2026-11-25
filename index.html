@@ -70,7 +70,7 @@
           </h1>
 
           <p class="hero-subtitle">
-            Descreva o móvel que você imagina, informe medidas se desejar ou deixe o nosso projetista criar a estrutura e montar cada peça na hora.
+            Descreva o móvel que você imagina, informe medidas ou deixe o site criar. Depois abra as portas, pinte peça por peça no Modo Pintor ou veja todas as medidas no Modo Detalhado.
           </p>
 
           <!-- Painel: O que você quer criar? -->
@@ -130,6 +130,63 @@
 
         <!-- Coluna Interativa 3D -->
         <div class="stage-wrapper reveal-up delay-1">
+          <!-- Abas de Modos Especiais acima do Palco -->
+          <div class="mode-tabs-bar" role="toolbar" aria-label="Modos de interação do móvel">
+            <button type="button" class="mode-tab-btn" id="painterModeBtn" aria-pressed="false">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11Z"/><path d="m5 2 5 5"/><path d="M2 13h15"/><path d="M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4Z"/></svg>
+              <span>Modo Pintor</span>
+            </button>
+
+            <button type="button" class="mode-tab-btn" id="detailModeBtn" aria-pressed="false">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/></svg>
+              <span>Modo Detalhado (cm / m)</span>
+            </button>
+          </div>
+
+          <!-- Gaveta do Modo Pintor (Balde de Tinta + Pincel) -->
+          <div class="painter-drawer hidden" id="painterPanel">
+            <div class="painter-top-row">
+              <div class="bucket-indicator">
+                <span class="bucket-icon" id="activeBucketIcon" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 11H5l1.4 8.4A2 2 0 0 0 8.37 21h7.26a2 2 0 0 0 1.97-1.6L19 11Z"/><path d="M5 11a7 7 0 0 1 14 0"/><path d="M19 13c1.5 0 2.5 1 2.5 2.5S20 18 19 18"/></svg>
+                </span>
+                <div>
+                  <small>Balde de tinta ativo</small>
+                  <strong id="activePaintName">Verde Sálvia Acetinado</strong>
+                </div>
+              </div>
+
+              <div class="painter-tools">
+                <button type="button" class="tool-pill active" id="toolBrushBtn" title="Pintar peça por peça com pincel">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.06 11.9l8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08"/><path d="M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.1 2.49 2.02 4 2.02 2.2 0 4-1.8 4-4.04a3.01 3.01 0 0 0-3-3.02z"/></svg>
+                  <span>Pincel</span>
+                </button>
+                <button type="button" class="tool-pill" id="toolRollerBtn" title="Pintar todas as peças com a cor do balde">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="16" height="6" rx="2"/><path d="M18 6h2a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-8v8"/></svg>
+                  <span>Pintar tudo</span>
+                </button>
+                <button type="button" class="tool-pill" id="clearPaintBtn" title="Remover tintas personalizadas">
+                  <span>Limpar</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="paint-buckets-row" id="paintBucketsRow" role="radiogroup" aria-label="Cores do balde de tinta"></div>
+
+            <div class="painter-footer-note" id="paintedStatusText">
+              Clique ou passe o pincel sobre cada porta, parede lateral, gaveta ou tampo para pintar.
+            </div>
+          </div>
+
+          <!-- Gaveta do Modo Detalhado (Medidas em cm e m) -->
+          <div class="detail-drawer hidden" id="detailPanel">
+            <div class="detail-header">
+              <span><i class="dot"></i> Medidas detalhadas (centímetros e metros)</span>
+              <span class="detail-total-badge" id="detailTotalBadge">120 cm (1,20 m) × 85 cm (0,85 m) × 56 cm (0,56 m)</span>
+            </div>
+            <div class="detail-parts-grid" id="detailSummaryList"></div>
+          </div>
+
           <div class="stage-card">
             <div class="stage-viewport">
               <div class="stage-top-tag">
@@ -138,8 +195,14 @@
               </div>
 
               <div class="stage-hint" id="stageHint">
-                Arraste para girar · Role ou pince para aproximar
+                Arraste para girar · Clique na porta para abrir
               </div>
+
+              <!-- Tooltip flutuante do Modo Pintor -->
+              <div class="painter-hover-tag hidden" id="painterTooltip"></div>
+
+              <!-- Camada de Cotas 3D (Modo Detalhado cm / m) -->
+              <div class="dimension-overlay hidden" id="dimensionOverlay" aria-hidden="true"></div>
 
               <!-- Canvas 3D -->
               <div id="canvasContainer" class="canvas-container" aria-label="Visualização 3D da montagem do móvel em madeira"></div>
@@ -158,7 +221,7 @@
                   <input type="range" id="explodeRange" min="0" max="100" value="0" aria-label="Controlar abertura das peças de madeira" />
                 </div>
 
-                <button class="icon-action-btn" id="doorsBtn" title="Abrir ou fechar portas e gavetas">
+                <button class="icon-action-btn" id="doorsBtn" title="Abrir ou fechar todas as portas e gavetas">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 3v18"/><path d="M9 12h.01"/><path d="M15 12h.01"/></svg>
                   <span id="doorsBtnText">Abrir portas</span>
                 </button>
@@ -187,8 +250,8 @@
                 </div>
 
                 <div class="glass-subcard swatch-card">
-                  <span class="swatch-title">Acabamento</span>
-                  <div class="swatch-row" role="radiogroup" aria-label="Cor e acabamento da madeira">
+                  <span class="swatch-title">Madeira base</span>
+                  <div class="swatch-row" role="radiogroup" aria-label="Cor e acabamento base da madeira">
                     <button class="swatch-btn active" data-finish="espresso" style="--swatch-color: #2B1D16;" aria-label="Espresso Nogueira" title="Espresso — Nogueira"></button>
                     <button class="swatch-btn" data-finish="oat" style="--swatch-color: #E9DFCF;" aria-label="Oat Aveia" title="Oat — Madeira Clara"></button>
                     <button class="swatch-btn" data-finish="sage" style="--swatch-color: #9CAF88;" aria-label="Sage Green Sálvia" title="Sage Green — Laca Sálvia"></button>
@@ -297,7 +360,7 @@
           <span class="meta-pill"><i class="dot"></i> Atendimento personalizado</span>
           <h2>Vamos tirar o seu móvel do papel?</h2>
           <p>
-            O projeto que você montou no simulador 3D já vem preenchido aqui ao lado. Ajuste qualquer detalhe e envie para receber seu orçamento sob medida.
+            O projeto, as medidas e as cores que você pintou no simulador 3D já vêm preenchidos aqui ao lado. Ajuste qualquer detalhe e envie para receber seu orçamento sob medida.
           </p>
 
           <div class="palette-legend">
@@ -346,7 +409,7 @@
           </div>
 
           <div class="field-group">
-            <label for="projectNotes">Medidas e observações do projeto</label>
+            <label for="projectNotes">Medidas e pinturas personalizadas do projeto</label>
             <textarea id="projectNotes" rows="3" placeholder="Ex.: Armário de pia com 2 portas, prateleira interna e cuba inox..."></textarea>
           </div>
 
