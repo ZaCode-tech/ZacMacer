@@ -11,7 +11,7 @@
   --sage: #9CAF88;
   --sage-hover: #ADC099;
   --glass-bg: rgba(43, 29, 22, 0.56);
-  --glass-card: rgba(34, 22, 16, 0.72);
+  --glass-card: rgba(34, 22, 16, 0.76);
   --border-light: rgba(233, 223, 207, 0.16);
   --radius-xl: 28px;
   --radius-lg: 20px;
@@ -107,8 +107,8 @@ h1, h2, h3, .brand-name {
 }
 
 .btn-lg {
-  padding: 0.9rem 1.8rem;
-  font-size: 0.96rem;
+  padding: 0.88rem 1.65rem;
+  font-size: 0.95rem;
 }
 
 .btn-block {
@@ -165,7 +165,7 @@ h1, h2, h3, .brand-name {
 .topbar {
   max-width: 1320px;
   margin: 0 auto;
-  padding: 1.35rem 2rem;
+  padding: 1.25rem 2rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -284,18 +284,18 @@ h1, h2, h3, .brand-name {
 }
 
 /* ==========================================================================
-   HERO & PALCO 3D DE MONTAGEM
+   HERO & CRIADOR SOB MEDIDA
    ========================================================================== */
 .hero-section {
   max-width: 1320px;
   margin: 0 auto;
-  padding: 1.5rem 2rem 4.5rem;
+  padding: 1.25rem 2rem 4.5rem;
 }
 
 .hero-grid {
   display: grid;
-  grid-template-columns: 1.02fr 1.18fr;
-  gap: 2.75rem;
+  grid-template-columns: 1.04fr 1.16fr;
+  gap: 2.5rem;
   align-items: center;
 }
 
@@ -303,78 +303,177 @@ h1, h2, h3, .brand-name {
   display: flex;
   flex-wrap: wrap;
   gap: 0.6rem;
-  margin-bottom: 1.35rem;
+  margin-bottom: 1.1rem;
 }
 
 .hero-title {
-  font-size: clamp(2.35rem, 4.4vw, 4.1rem);
+  font-size: clamp(2.2rem, 4.1vw, 3.85rem);
   font-weight: 500;
   line-height: 1.07;
   color: var(--oat);
-  margin-bottom: 1.25rem;
+  margin-bottom: 1rem;
 }
 
 .hero-subtitle {
-  font-size: 1.05rem;
+  font-size: 1rem;
   color: var(--oat-muted);
-  max-width: 490px;
-  margin-bottom: 2rem;
+  max-width: 500px;
+  margin-bottom: 1.65rem;
 }
 
-.hero-cta-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.85rem;
-  margin-bottom: 2.5rem;
-}
-
-.furniture-selector {
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--border-light);
-}
-
-.selector-label {
-  display: block;
-  font-size: 0.84rem;
-  color: var(--oat-muted);
-  margin-bottom: 0.75rem;
-}
-
-.selector-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-}
-
-.piece-btn {
-  padding: 0.58rem 1.1rem;
-  border-radius: var(--radius-pill);
+/* Caixa Interativa: O que você quer criar? */
+.creator-box {
+  background: var(--glass-card);
   border: 1px solid var(--border-light);
-  background: rgba(34, 22, 16, 0.55);
+  border-radius: var(--radius-xl);
+  padding: 1.35rem;
+  backdrop-filter: blur(18px);
+  box-shadow: 0 22px 48px rgba(12, 7, 5, 0.45);
+}
+
+.creator-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+}
+
+.creator-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.96rem;
+  font-weight: 600;
+  color: var(--oat);
+}
+
+.creator-badge {
+  font-size: 0.74rem;
+  color: var(--sage);
+  background: rgba(156, 175, 136, 0.14);
+  border: 1px solid rgba(156, 175, 136, 0.3);
+  padding: 0.22rem 0.65rem;
+  border-radius: var(--radius-pill);
+}
+
+.creator-box textarea {
+  width: 100%;
+  resize: none;
+  padding: 0.85rem 1rem;
+  border-radius: 16px;
+  border: 1px solid var(--border-light);
+  background: rgba(233, 223, 207, 0.08);
+  color: var(--oat);
+  font-family: inherit;
+  font-size: 0.94rem;
+  line-height: 1.45;
+  outline: none;
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.creator-box textarea::placeholder {
+  color: rgba(233, 223, 207, 0.48);
+}
+
+.creator-box textarea:focus {
+  border-color: var(--sage);
+  background: rgba(233, 223, 207, 0.12);
+}
+
+.quick-ideas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.42rem;
+  margin-top: 0.7rem;
+}
+
+.idea-chip {
+  padding: 0.36rem 0.78rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(233, 223, 207, 0.14);
+  background: rgba(233, 223, 207, 0.06);
   color: var(--oat-muted);
   font-family: inherit;
-  font-size: 0.86rem;
+  font-size: 0.78rem;
   font-weight: 500;
   cursor: pointer;
   transition: all var(--transition);
 }
 
-.piece-btn:hover {
-  color: var(--oat);
-  border-color: rgba(233, 223, 207, 0.38);
-}
-
-.piece-btn.active {
-  background: var(--oat);
+.idea-chip:hover {
   color: var(--espresso-deep);
+  background: var(--oat);
   border-color: var(--oat);
-  font-weight: 600;
 }
 
-/* Palco 3D */
+.dimensions-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+  margin-top: 0.85rem;
+}
+
+.dim-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.dim-field label {
+  font-size: 0.72rem;
+  color: var(--oat-muted);
+}
+
+.dim-field input {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-light);
+  background: rgba(233, 223, 207, 0.06);
+  color: var(--oat);
+  font-family: inherit;
+  font-size: 0.88rem;
+  outline: none;
+  transition: border-color var(--transition);
+}
+
+.dim-field input::placeholder {
+  color: rgba(233, 223, 207, 0.4);
+}
+
+.dim-field input:focus {
+  border-color: var(--sage);
+}
+
+.creator-actions {
+  display: flex;
+  gap: 0.65rem;
+  margin-top: 0.95rem;
+}
+
+.creator-submit {
+  flex: 1;
+}
+
+.generated-specs {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(233, 223, 207, 0.1);
+  font-size: 0.8rem;
+  color: var(--oat-muted);
+}
+
+.generated-specs strong {
+  color: var(--sage);
+}
+
+/* ==========================================================================
+   PALCO 3D DE MONTAGEM
+   ========================================================================== */
 .stage-card {
   position: relative;
-  height: 620px;
+  height: 640px;
   border-radius: var(--radius-xl);
   overflow: hidden;
   border: 1px solid var(--border-light);
@@ -984,6 +1083,10 @@ h1, h2, h3, .brand-name {
   .contact-section {
     padding-left: 1.15rem;
     padding-right: 1.15rem;
+  }
+
+  .creator-actions {
+    flex-direction: column;
   }
 
   .stage-card {
