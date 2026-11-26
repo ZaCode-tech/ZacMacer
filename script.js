@@ -1,211 +1,9 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { CATALOG, specFromItem, detectCustom } from './catalog.js';
+import { boxGeo, FINISHES, PAINT_BUCKETS, createWoodTexturesFromConfig } from './shared.js';
+import { CATALOG, specFromItem, detectCustom, parseDna, thumbSvg } from './catalog.js';
 import { computeBOM, countScrews } from './bom.js';
-
-function boxGeo(w, h, d) {
-  const m = Math.min(w, h, d);
-  return m < 0.012 ? new THREE.BoxGeometry(w, h, d) : new RoundedBoxGeometry(w, h, d, 2, Math.min(0.0025, m * 0.3));
-}
-
-/* ==========================================================================
-   1. ACABAMENTOS DE MADEIRA & BALDES DE TINTA (PBR)
-   ========================================================================== */
-const FINISHES = {
-  espresso: {
-    name: 'Espresso & Quartzo Aveia',
-    labelSelect: 'Espresso (Madeira Escura / Nogueira)',
-    baseColor: '#5B3D2B',
-    grainColor: '#2B1D16',
-    highlightColor: '#75513B',
-    roughness: 0.42,
-    metalness: 0.04,
-    isLacquer: false
-  },
-  oat: {
-    name: 'Oat Natural & Pedra Clara',
-    labelSelect: 'Oat (Madeira Clara / Aveia)',
-    baseColor: '#DFD2BE',
-    grainColor: '#BFA98C',
-    highlightColor: '#EFE6D8',
-    roughness: 0.48,
-    metalness: 0.02,
-    isLacquer: false
-  },
-  sage: {
-    name: 'Sage Green Acetinado & Carvalho',
-    labelSelect: 'Sage Green (Verde Sálvia)',
-    baseColor: '#8FA37B',
-    grainColor: '#728660',
-    highlightColor: '#A7BA94',
-    roughness: 0.36,
-    metalness: 0.05,
-    isLacquer: true
-  }
-};
-
-const PAINT_BUCKETS = [
-  {
-    id: 'sage_paint',
-    name: 'Verde Sálvia Acetinado',
-    short: 'Verde Sálvia',
-    baseColor: '#8FA37B',
-    grainColor: '#788C64',
-    highlightColor: '#A6B993',
-    roughness: 0.34,
-    metalness: 0.05,
-    isLacquer: true
-  },
-  {
-    id: 'oat_paint',
-    name: 'Aveia / Carvalho Claro',
-    short: 'Aveia Clara',
-    baseColor: '#E5D8C3',
-    grainColor: '#C5AF91',
-    highlightColor: '#F3EBDE',
-    roughness: 0.44,
-    metalness: 0.02,
-    isLacquer: false
-  },
-  {
-    id: 'espresso_paint',
-    name: 'Nogueira Espresso',
-    short: 'Nogueira',
-    baseColor: '#4A3123',
-    grainColor: '#23150E',
-    highlightColor: '#664532',
-    roughness: 0.4,
-    metalness: 0.04,
-    isLacquer: false
-  },
-  {
-    id: 'naval_white',
-    name: 'Branco Naval Fosco',
-    short: 'Branco Naval',
-    baseColor: '#F3F1EC',
-    grainColor: '#DCD9D2',
-    highlightColor: '#FFFFFF',
-    roughness: 0.32,
-    metalness: 0.03,
-    isLacquer: true
-  },
-  {
-    id: 'graphite_paint',
-    name: 'Grafite Carvão Acetinado',
-    short: 'Grafite',
-    baseColor: '#35393E',
-    grainColor: '#222529',
-    highlightColor: '#4A4F56',
-    roughness: 0.35,
-    metalness: 0.08,
-    isLacquer: true
-  },
-  {
-    id: 'honey_oak',
-    name: 'Carvalho Mel Dourado',
-    short: 'Carvalho Mel',
-    baseColor: '#B57B45',
-    grainColor: '#7D4E24',
-    highlightColor: '#CE965E',
-    roughness: 0.42,
-    metalness: 0.03,
-    isLacquer: false
-  },
-  {
-    id: 'petrol_blue',
-    name: 'Azul Petróleo Profundo',
-    short: 'Azul Petróleo',
-    baseColor: '#2E535F',
-    grainColor: '#1E3A43',
-    highlightColor: '#426D7B',
-    roughness: 0.34,
-    metalness: 0.06,
-    isLacquer: true
-  },
-  {
-    id: 'terracotta_paint',
-    name: 'Terracota Argila',
-    short: 'Terracota',
-    baseColor: '#A6563D',
-    grainColor: '#7B3A26',
-    highlightColor: '#BE6E55',
-    roughness: 0.38,
-    metalness: 0.04,
-    isLacquer: true
-  }
-];
-
-const _texCache = new Map();
-function _drawWood(cfg) {
-  const key = cfg.baseColor + cfg.isLacquer;
-  if (_texCache.has(key)) return _texCache.get(key);
-  const size = 768;
-  const mk = () => { const c = document.createElement('canvas'); c.width = c.height = size; return c; };
-  const cc = mk(), bc = mk();
-  const ctx = cc.getContext('2d'), b = bc.getContext('2d');
-  ctx.fillStyle = cfg.baseColor; ctx.fillRect(0, 0, size, size);
-  b.fillStyle = '#808080'; b.fillRect(0, 0, size, size);
-  let seed = 11;
-  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-  if (cfg.isLacquer) {
-    for (let i = 0; i < 2600; i++) { // laca com leve "casca de laranja"
-      ctx.fillStyle = i % 2 ? cfg.highlightColor : cfg.grainColor;
-      ctx.globalAlpha = 0.035;
-      ctx.beginPath(); ctx.arc(rnd() * size, rnd() * size, 1 + rnd() * 3, 0, 6.283); ctx.fill();
-    }
-  } else {
-    // faixas largas de tom (variação natural entre tábuas)
-    for (let i = 0; i < 6; i++) {
-      ctx.fillStyle = i % 2 ? cfg.highlightColor : cfg.grainColor;
-      ctx.globalAlpha = 0.08; ctx.fillRect(rnd() * size, 0, 40 + rnd() * 160, size);
-    }
-    // anéis de crescimento em arco (corte tangencial)
-    for (let k = 1; k < 16; k++) {
-      ctx.beginPath(); ctx.ellipse(size * 0.5, size * 1.1, 30 + k * 26, 300 + k * 70, 0, 0, 6.283);
-      ctx.strokeStyle = k % 2 ? cfg.grainColor : cfg.highlightColor;
-      ctx.globalAlpha = 0.09; ctx.lineWidth = 2 + (k % 3); ctx.stroke();
-    }
-    // fibras longas onduladas
-    for (let i = 0; i < 950; i++) {
-      const x0 = rnd() * size, lw = 0.5 + rnd() * 2, amp = 3 + rnd() * 14, f = 0.004 + rnd() * 0.01, ph = rnd() * 6.28;
-      ctx.beginPath(); b.beginPath();
-      for (let y = 0; y <= size; y += 16) {
-        const x = x0 + Math.sin(y * f + ph) * amp + Math.sin(y * f * 2.7 + ph * 1.7) * amp * 0.35;
-        if (y) { ctx.lineTo(x, y); b.lineTo(x, y); } else { ctx.moveTo(x, y); b.moveTo(x, y); }
-      }
-      ctx.strokeStyle = rnd() < 0.62 ? cfg.grainColor : cfg.highlightColor;
-      ctx.globalAlpha = 0.05 + rnd() * 0.2; ctx.lineWidth = lw; ctx.stroke();
-      b.strokeStyle = rnd() < 0.5 ? '#585858' : '#a8a8a8'; b.globalAlpha = 0.25; b.lineWidth = lw; b.stroke();
-    }
-    // poros e um nó ocasional
-    for (let p = 0; p < 1400; p++) {
-      ctx.fillStyle = cfg.grainColor; ctx.globalAlpha = 0.2;
-      ctx.fillRect(rnd() * size, rnd() * size, 1, 3 + rnd() * 14);
-    }
-    const kx = rnd() * size, ky = rnd() * size;
-    for (let r = 3; r < 26; r += 4) {
-      ctx.beginPath(); ctx.ellipse(kx, ky, r * 0.7, r * 1.5, 0, 0, 6.283);
-      ctx.strokeStyle = cfg.grainColor; ctx.globalAlpha = 0.28; ctx.lineWidth = 1.4; ctx.stroke();
-      b.beginPath(); b.ellipse(kx, ky, r * 0.7, r * 1.5, 0, 0, 6.283); b.strokeStyle = '#404040'; b.globalAlpha = 0.3; b.stroke();
-    }
-  }
-  const pair = { cc, bc };
-  _texCache.set(key, pair);
-  return pair;
-}
-
-function createWoodTexturesFromConfig(cfg) {
-  const { cc, bc } = _drawWood(cfg);
-  const map = new THREE.CanvasTexture(cc);
-  map.wrapS = map.wrapT = THREE.RepeatWrapping;
-  map.colorSpace = THREE.SRGBColorSpace;
-  map.anisotropy = 8;
-  const bumpMap = new THREE.CanvasTexture(bc);
-  bumpMap.wrapS = bumpMap.wrapT = THREE.RepeatWrapping;
-  return { map, bumpMap };
-}
 
 /* ==========================================================================
    2. CENA 3D, ILUMINAÇÃO DE ESTÚDIO E CONTROLES DE CÂMERA
@@ -247,7 +45,7 @@ controls.maxDistance = 7.5;
 controls.maxPolarAngle = Math.PI * 0.49;
 controls.target.set(0, 0.55, 0);
 
-const hemiLight = new THREE.HemisphereLight(0xfff5e8, 0x2b1d16, 0.78);
+const hemiLight = new THREE.HemisphereLight(0xfff5e8, 0x8a7560, 0.8);
 scene.add(hemiLight);
 
 const keyLight = new THREE.DirectionalLight(0xfff1de, 1.85);
@@ -263,7 +61,7 @@ keyLight.shadow.camera.bottom = -1.5;
 keyLight.shadow.bias = -0.0005;
 scene.add(keyLight);
 
-const rimLight = new THREE.DirectionalLight(0x9caf88, 0.65);
+const rimLight = new THREE.DirectionalLight(0xffd9c2, 0.55);
 rimLight.position.set(-3.0, 2.5, -2.5);
 scene.add(rimLight);
 
@@ -278,7 +76,7 @@ scene.add(shadowFloor);
 
 const plinthGeo = new THREE.CylinderGeometry(1.55, 1.6, 0.025, 64);
 const plinthMat = new THREE.MeshStandardMaterial({
-  color: 0x221610,
+  color: 0xe4dac8,
   roughness: 0.85,
   metalness: 0.05
 });
@@ -476,6 +274,7 @@ function registerOpenable(partInfo, config) {
     openOffset: config.openOffset || new THREE.Vector3(0, 0, 0),
     closedRotY: 0,
     openRotY: config.openRotY || 0,
+    openRotX: config.openRotX || 0,
     currentProgress: 0,
     targetProgress: 0
   };
@@ -603,6 +402,12 @@ function parseFurnitureRequest(rawText, manualDims) {
     category === 'armario_cozinha' ||
     (category === 'armario_pia' && w >= 120);
 
+  const known = Boolean(custom) || /guarda|roupeiro|closet|cozinha|aereo|bancada|pia|tanque|banheiro|lavabo|gabinete|ripado|balcao|recepcao|aparador|estante|nicho|armario|multiuso|dispensa|sapateira/.test(text);
+  const opts = {
+    led: /\bled\b|iluminacao|luz/.test(text) ? (/frio|branc/.test(text) ? 'frio' : /neutro/.test(text) ? 'neutro' : 'quente') : 'quente',
+    divider: /divisoria/.test(text) ? Math.min(4, parseInt((text.match(/(\d+)\s*divisoria/) || [0, 1])[1], 10) || 1) : 0,
+    backShelves: /prat\w*leira/.test(text) && /(atras|fundo|traseir)/.test(text) ? Math.min(6, parseInt((text.match(/(\d+)\s*prat\w*leira/) || [0, 3])[1], 10) || 3) : 0
+  };
   const hasShelf = !text.includes('sem prateleira');
 
   let suggestedFinish = null;
@@ -626,7 +431,10 @@ function parseFurnitureRequest(rawText, manualDims) {
     isAutoImagined,
     suggestedFinish,
     kind: custom ? custom.kind : null,
-    levels: custom ? custom.levels : 0
+    levels: custom ? custom.levels : 0,
+    dna: custom && custom.dna ? custom.dna : null,
+    opts,
+    fallback: !known
   };
 }
 
@@ -1113,6 +921,11 @@ function buildProceduralSlatted(spec) {
   const d = spec.dCm / 100;
   const t = 0.025;
   hasLedFeature = true;
+  const o = spec.opts || {};
+  const hollow = Boolean(o.divider || o.backShelves);
+  const LEDC = { quente: [0xffd27d, 0xffa733, 0xffb84d], frio: [0xe8f4ff, 0x9fd0ff, 0xbfe0ff], neutro: [0xfff6e6, 0xffe2b8, 0xffeacc] }[o.led || 'quente'];
+  ledStripMat.color.setHex(LEDC[0]);
+  ledStripMat.emissive.setHex(LEDC[1]);
 
   const base = new THREE.Mesh(boxGeo(w - 0.04, t, d - 0.04), createPartWoodMaterial(true));
   base.position.set(0, t / 2, 0);
@@ -1121,12 +934,21 @@ function buildProceduralSlatted(spec) {
     dimsCm: { w: spec.wCm - 4, h: 2.5, d: spec.dCm - 4 }
   });
 
-  const coreBox = new THREE.Mesh(boxGeo(w - 0.06, h - 0.08, d - 0.07), createPartWoodMaterial(false));
-  coreBox.position.set(0, (h - 0.08) / 2 + t, -0.01);
-  registerPart(coreBox, { x: 0, y: 0.35, z: -0.38 }, {
-    name: 'Caixa Estrutural Interna',
-    dimsCm: { w: spec.wCm - 6, h: spec.hCm - 8, d: spec.dCm - 7 }
-  });
+  if (hollow) {
+    const iw = w - 0.06, ih = h - 0.08, idp = d - 0.07, cy = ih / 2 + t, tt = 0.022;
+    const pm = (sx, sy, sz, x, y, z, rot) => { const m = new THREE.Mesh(boxGeo(sx, sy, sz), createPartWoodMaterial(rot)); m.position.set(x, y, z); return m; };
+    [-1, 1].forEach((k) => registerPart(pm(tt, ih, idp, k * (iw / 2 - tt / 2), cy, -0.01, false), { x: k * 0.4, y: 0.1, z: -0.2 }, { name: k < 0 ? 'Parede Lateral Esquerda' : 'Parede Lateral Direita', dimsCm: { w: 2.2, h: Math.round(ih * 100), d: Math.round(idp * 100) } }));
+    registerPart(pm(iw - 2 * tt, tt, idp, 0, t + ih - tt / 2, -0.01, true), { x: 0, y: 0.45, z: -0.2 }, { name: 'Travessa Fixa Superior', dimsCm: { w: Math.round((iw - 2 * tt) * 100), h: 2.2, d: Math.round(idp * 100) } });
+    for (let k = 1; k <= (o.divider || 0); k++) registerPart(pm(tt, ih - 2 * tt, idp - 0.02, -iw / 2 + tt + ((iw - 2 * tt) * k) / (o.divider + 1), cy, -0.02, false), { x: 0, y: 0.15, z: -0.3 }, { name: `Divisória ${k}`, dimsCm: { w: 2.2, h: Math.round((ih - 2 * tt) * 100), d: Math.round((idp - 0.02) * 100) } });
+    for (let k = 1; k <= (o.backShelves || 0); k++) registerPart(pm(iw - 2 * tt - 0.004, tt, idp - 0.03, 0, t + ((ih - tt) * k) / (o.backShelves + 1), -0.025, true), { x: 0, y: 0.1 + k * 0.05, z: -0.35 - k * 0.05 }, { name: `Prateleira Traseira ${k}`, dimsCm: { w: Math.round((iw - 2 * tt) * 100), h: 2.2, d: Math.round((idp - 0.03) * 100) } });
+  } else {
+    const coreBox = new THREE.Mesh(boxGeo(w - 0.06, h - 0.08, d - 0.07), createPartWoodMaterial(false));
+    coreBox.position.set(0, (h - 0.08) / 2 + t, -0.01);
+    registerPart(coreBox, { x: 0, y: 0.35, z: -0.38 }, {
+      name: 'Caixa Estrutural Interna',
+      dimsCm: { w: spec.wCm - 6, h: spec.hCm - 8, d: spec.dCm - 7 }
+    });
+}
 
   const slatCount = Math.max(16, Math.round(w * 18));
   const slatW = 0.024;
@@ -1150,12 +972,12 @@ function buildProceduralSlatted(spec) {
   const ledBar = new THREE.Mesh(boxGeo(w - 0.04, 0.014, 0.018), ledStripMat);
   ledBar.position.set(0, h - 0.042, d / 2 - 0.008);
   registerPart(ledBar, { x: 0, y: 0.45, z: 0.25 }, {
-    name: 'Perfil LED Quente',
+    name: `Perfil LED ${o.led === 'frio' ? 'Frio' : o.led === 'neutro' ? 'Neutro' : 'Quente'}`,
     dimsCm: { w: spec.wCm - 4, h: 1.4, d: 1.8 },
     paintable: false
   });
 
-  ledLight = new THREE.PointLight(0xffb84d, 0, 2.4, 1.6);
+  ledLight = new THREE.PointLight(LEDC[2], 0, 2.4, 1.6);
   ledLight.position.set(0, h - 0.08, d / 2 + 0.18);
   furnitureRoot.add(ledLight);
 
@@ -1309,67 +1131,154 @@ function buildMetalon(spec) {
   const w = spec.wCm / 100, h = spec.hCm / 100, d = spec.dCm / 100;
   const s = 0.03, tt = 0.03, legH = h - tt, inset = 0.01;
   const frame = new THREE.Group();
-  const tube = (x, y, z, sx, sy, sz) => {
+  const tube = (x, y, z, sx, sy, sz, rz = 0) => {
     const m = new THREE.Mesh(boxGeo(sx, sy, sz), metalMat);
-    m.position.set(x, y, z); m.userData.nonPaintable = true; frame.add(m);
+    m.position.set(x, y, z); m.rotation.z = rz; m.userData.nonPaintable = true; frame.add(m);
   };
-  [-1, 1].forEach((ix) => [-1, 1].forEach((iz) => tube(ix * (w / 2 - s / 2 - inset), legH / 2, iz * (d / 2 - s / 2 - inset), s, legH, s)));
-  const levels = spec.levels || 0;
-  const ys = [];
+  const lx = w / 2 - s / 2 - inset, lz = d / 2 - s / 2 - inset;
+  [-1, 1].forEach((ix) => [-1, 1].forEach((iz) => tube(ix * lx, legH / 2, iz * lz, s, legH, s)));
+  if (spec.legs6) [-1, 1].forEach((iz) => tube(0, legH / 2, iz * lz, s, legH, s));
+  const levels = spec.levels || 0, ys = [];
   for (let i = 1; i <= levels; i++) ys.push((legH * i) / (levels + 1));
   ys.push(legH);
-  ys.forEach((y) => {
-    const rw = w - 2 * inset - 2 * s, rd = d - 2 * inset - 2 * s;
-    [-1, 1].forEach((k) => {
-      tube(0, y - s / 2, k * (d / 2 - s / 2 - inset), rw, s, s);
-      tube(k * (w / 2 - s / 2 - inset), y - s / 2, 0, s, s, rd);
-    });
-  });
-  registerPart(frame, { x: 0, y: -0.2, z: 0 }, {
-    name: 'Estrutura Metalon 30×30', dimsCm: { w: spec.wCm, h: spec.hCm - 3, d: spec.dCm }, paintable: false
-  });
+  const rw = w - 2 * inset - 2 * s, rd = d - 2 * inset - 2 * s;
+  ys.forEach((y) => [-1, 1].forEach((k) => { tube(0, y - s / 2, k * lz, rw, s, s); tube(k * lx, y - s / 2, 0, s, s, rd); }));
+  if (spec.brace === 'H') [-1, 1].forEach((k) => tube(k * lx, legH * 0.22, 0, s, s, rd));
+  if (spec.brace === 'X') {
+    const len = Math.hypot(rw, legH - 0.1), ang = Math.atan2(legH - 0.1, rw);
+    [-1, 1].forEach((k) => tube(0, legH / 2, -lz, len, s, s, k * ang));
+  }
+  registerPart(frame, { x: 0, y: -0.2, z: 0 }, { name: 'Estrutura Metalon 30×30', dimsCm: { w: spec.wCm, h: spec.hCm - 3, d: spec.dCm }, paintable: false });
   ys.forEach((y, i) => {
     const top = i === ys.length - 1;
     const slab = new THREE.Mesh(boxGeo(top ? w : w - 0.01, tt, top ? d : d - 0.01), createPartWoodMaterial(true));
     slab.position.set(0, y + tt / 2, 0);
-    registerPart(slab, { x: 0, y: 0.25 + i * 0.12, z: 0.3 }, {
-      name: top ? 'Tampo' : `Prateleira ${i + 1}`, dimsCm: { w: top ? spec.wCm : spec.wCm - 1, h: 3, d: top ? spec.dCm : spec.dCm - 1 }
+    registerPart(slab, { x: 0, y: 0.25 + i * 0.12, z: 0.3 }, { name: top ? 'Tampo' : `Prateleira ${i + 1}`, dimsCm: { w: top ? spec.wCm : spec.wCm - 1, h: 3, d: top ? spec.dCm : spec.dCm - 1 } });
+  });
+  if (spec.back) {
+    const bk = new THREE.Mesh(boxGeo(w - 0.02, legH - 0.04, 0.012), createPartWoodMaterial(false));
+    bk.position.set(0, legH / 2, -lz - s / 2 - 0.006);
+    registerPart(bk, { x: 0, y: 0.1, z: -0.4 }, { name: 'Fundo', dimsCm: { w: spec.wCm - 2, h: spec.hCm - 7, d: 1.2 } });
+  }
+  if (spec.drawer) {
+    const dw = rw * 0.55, g = new THREE.Group();
+    g.position.set(0, legH - 0.1, lz + s / 2 + 0.011);
+    g.add(new THREE.Mesh(boxGeo(dw, 0.14, 0.022), createPartWoodMaterial(false)));
+    const hd = new THREE.Mesh(boxGeo(0.12, 0.012, 0.02), chromeMat); hd.position.z = 0.02; hd.userData.nonPaintable = true; g.add(hd);
+    const bx = new THREE.Mesh(boxGeo(dw - 0.05, 0.1, rd - 0.04), createPartWoodMaterial(false)); bx.position.set(0, -0.01, -(rd - 0.04) / 2 - 0.011); g.add(bx);
+    const p = registerPart(g, { x: 0, y: 0.2, z: 0.45 }, { name: 'Gaveta 1', dimsCm: { w: Math.round(dw * 100), h: 14, d: Math.round(rd * 100) } });
+    registerOpenable(p, { openOffset: new THREE.Vector3(0, 0, 0.26) });
+  }
+}
+
+/* CONSTRUTOR 7B: MÓDULO PARAMÉTRICO (DNA do catálogo): colunas x células (porta, gaveta, nicho, LED, correr, basculante, ripado) */
+function buildModular(spec) {
+  clearFurniture();
+  const { base, top, cols } = parseDna(spec.dna);
+  const w = spec.wCm / 100, h = spec.hCm / 100, d = spec.dCm / 100, t = 0.022;
+  const baseH = base === 'r' ? 0.08 : base === 'p' ? 0.12 : 0;
+  const topT = top === 'p' ? 0.036 : top === 't' ? 0.03 : t, over = top === 'n' ? 0 : 0.02;
+  const bodyH = h - baseH - topT, cm = (v) => Math.round(v * 100);
+  const mk = (sx, sy, sz, x, y, z, rot = false, mat = null) => { const m = new THREE.Mesh(boxGeo(sx, sy, sz), mat || createPartWoodMaterial(rot)); m.position.set(x, y, z); return m; };
+  const ex = (x, y) => ({ x: x * 0.5, y: (y - h / 2) * 0.35, z: 0.2 + Math.abs(x) * 0.15 });
+  const handle = (parent, x, y, z, vertical = true) => { const m = new THREE.Mesh(boxGeo(vertical ? 0.012 : 0.1, vertical ? 0.1 : 0.012, 0.02), chromeMat); m.position.set(x, y, z); m.userData.nonPaintable = true; parent.add(m); };
+
+  registerPart(mk(w, t, d, 0, baseH + t / 2, 0, true), ex(0, 0), { name: 'Base Inferior', dimsCm: { w: spec.wCm, h: 2.2, d: spec.dCm } });
+  registerPart(mk(w + 2 * over, topT, d + over, 0, h - topT / 2, over / 2, true, top === 'p' ? createStonePartMaterial() : null), { x: 0, y: 0.55, z: 0 }, { name: 'Tampo Superior', dimsCm: { w: spec.wCm + 4 * over * 50, h: topT * 100, d: spec.dCm + over * 100 }, paintable: top !== 'p' });
+  [-1, 1].forEach((k) => registerPart(mk(t, bodyH - t, d, k * (w / 2 - t / 2), baseH + t + (bodyH - t) / 2, 0), ex(k * w / 2, h / 2), { name: k < 0 ? 'Parede Lateral Esquerda' : 'Parede Lateral Direita', dimsCm: { w: 2.2, h: cm(bodyH - t), d: spec.dCm } }));
+  registerPart(mk(w - 2 * t, bodyH - t, 0.006, 0, baseH + t + (bodyH - t) / 2, -d / 2 + 0.003), { x: 0, y: 0, z: -0.45 }, { name: 'Fundo', dimsCm: { w: spec.wCm - 4.4, h: cm(bodyH - t), d: 0.6 } });
+  if (base === 'r') registerPart(mk(w - 0.04, baseH, d - 0.06, 0, baseH / 2, -0.01), { x: 0, y: -0.25, z: 0 }, { name: 'Rodapé Base', dimsCm: { w: spec.wCm - 4, h: 8, d: spec.dCm - 6 } });
+  if (base === 'p') {
+    const fg = new THREE.Group();
+    [-1, 1].forEach((ix) => [-1, 1].forEach((iz) => { const f = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.014, baseH, 16), createPartWoodMaterial(false)); f.position.set(ix * (w / 2 - 0.06), baseH / 2, iz * (d / 2 - 0.06)); fg.add(f); }));
+    registerPart(fg, { x: 0, y: -0.25, z: 0 }, { name: 'Pés (4)', dimsCm: { w: 4.4, h: 12, d: 4.4 } });
+  }
+
+  const n = cols.length, sumW = cols.reduce((a, c) => a + c.w, 0), innerW = w - (n + 1) * t;
+  const yTop0 = h - topT, yBot0 = baseH + t, cnt = { P: 0, G: 0, C: 0, B: 0, R: 0, T: 0 };
+  let cursor = -w / 2 + t;
+  cols.forEach((c, i) => {
+    const cw = (c.w / sumW) * innerW, cx = cursor + cw / 2, z0 = d / 2 + t / 2 + 0.001;
+    const m = c.cells.length, sumH = c.cells.reduce((a, k) => a + k.h, 0), avail = yTop0 - yBot0 - (m - 1) * t;
+    let y = yTop0;
+    c.cells.forEach((k, j) => {
+      const ch = (k.h / sumH) * avail, cyc = y - ch / 2, fh = ch - 0.004;
+      if (k.t === 'P') {
+        const leaves = cw > 0.62 ? 2 : 1;
+        for (let li = 0; li < leaves; li++) {
+          const left = leaves === 2 ? li === 0 : i % 2 === 0, lw = leaves === 2 ? cw / 2 - 0.003 : cw - 0.004;
+          const pv = new THREE.Group();
+          pv.position.set(left ? cx - cw / 2 + 0.002 : cx + cw / 2 - 0.002, cyc, z0);
+          const pn = new THREE.Mesh(boxGeo(lw, fh, t), createPartWoodMaterial(false)); pn.position.x = left ? lw / 2 : -lw / 2; pv.add(pn);
+          handle(pv, left ? lw - 0.03 : -lw + 0.03, 0, t / 2 + 0.008);
+          const p = registerPart(pv, ex(cx, cyc), { name: `Porta ${++cnt.P}`, dimsCm: { w: cm(lw), h: cm(fh), d: 2.2 } });
+          registerOpenable(p, { openRotY: left ? -Math.PI * 0.54 : Math.PI * 0.54 });
+        }
+      } else if (k.t === 'G') {
+        const g = new THREE.Group(); g.position.set(cx, cyc, z0);
+        g.add(new THREE.Mesh(boxGeo(cw - 0.004, fh, t), createPartWoodMaterial(false)));
+        handle(g, 0, 0, t / 2 + 0.008, false);
+        const bx = new THREE.Mesh(boxGeo(cw - 0.05, fh * 0.7, d - 0.08), createPartWoodMaterial(false)); bx.position.set(0, -0.01, -(d - 0.08) / 2 - t / 2); g.add(bx);
+        const p = registerPart(g, ex(cx, cyc), { name: `Gaveta ${++cnt.G}`, dimsCm: { w: cm(cw - 0.004), h: cm(fh), d: spec.dCm - 4 } });
+        registerOpenable(p, { openOffset: new THREE.Vector3(0, 0, 0.26) });
+      } else if (k.t === 'L') {
+        hasLedFeature = true;
+        ledStripMat.color.setHex(0xffd27d); ledStripMat.emissive.setHex(0xffa733);
+        registerPart(mk(cw - 0.03, 0.01, 0.012, cx, y - 0.012, d / 2 - 0.03, false, ledStripMat), { x: 0, y: 0.3, z: 0.25 }, { name: 'Perfil LED', dimsCm: { w: cm(cw - 0.03), h: 1, d: 1.2 }, paintable: false });
+        if (!ledLight) { ledLight = new THREE.PointLight(0xffb84d, 0, 2.4, 1.6); ledLight.position.set(0, h * 0.6, d / 2 + 0.2); furnitureRoot.add(ledLight); }
+      } else if (k.t === 'C') {
+        const dir = (i + j) % 2 === 0 ? 1 : -1, lw = cw * 0.54;
+        const m2 = mk(lw, fh, 0.018, cx - dir * cw * 0.23, cyc, z0 + (dir > 0 ? 0 : 0.02));
+        const p = registerPart(m2, ex(cx, cyc), { name: `Porta de Correr ${++cnt.C}`, dimsCm: { w: cm(lw), h: cm(fh), d: 1.8 } });
+        registerOpenable(p, { openOffset: new THREE.Vector3(dir * cw * 0.46, 0, 0) });
+      } else if (k.t === 'B') {
+        const pv = new THREE.Group(); pv.position.set(cx, y - 0.002, z0);
+        const pn = new THREE.Mesh(boxGeo(cw - 0.004, fh, t), createPartWoodMaterial(false)); pn.position.y = -fh / 2; pv.add(pn);
+        handle(pv, 0, -fh + 0.04, t / 2 + 0.008, false);
+        const p = registerPart(pv, ex(cx, cyc), { name: `Porta Basculante ${++cnt.B}`, dimsCm: { w: cm(cw - 0.004), h: cm(fh), d: 2.2 } });
+        registerOpenable(p, { openRotX: -Math.PI * 0.45 });
+      } else if (k.t === 'R') {
+        const ns = Math.max(4, Math.round(cw / 0.032)), g = new THREE.Group(), sm = createPartWoodMaterial(false);
+        g.position.set(cx, cyc, z0);
+        for (let q = 0; q < ns; q++) { const sl = new THREE.Mesh(boxGeo(0.02, fh, 0.018), sm); sl.position.x = -cw / 2 + 0.01 + q * ((cw - 0.02) / (ns - 1)); g.add(sl); }
+        registerPart(g, ex(cx, cyc), { name: `Painel Ripado (${ns} ripas)`, dimsCm: { w: cm(cw), h: cm(fh), d: 1.8 } });
+      }
+      y -= ch;
+      if (j < m - 1) { registerPart(mk(cw, t, d - 0.012, cx, y - t / 2, -0.006, true), ex(cx, y), { name: `Travessa Fixa ${++cnt.T}`, dimsCm: { w: cm(cw), h: 2.2, d: spec.dCm - 1.2 } }); y -= t; }
     });
+    cursor += cw;
+    if (i < n - 1) registerPart(mk(t, yTop0 - yBot0, d - 0.012, cursor + t / 2, (yTop0 + yBot0) / 2, -0.006), ex(cursor, h / 2), { name: `Divisória ${i + 1}`, dimsCm: { w: 2.2, h: cm(yTop0 - yBot0), d: spec.dCm - 1.2 } });
+    cursor += t;
   });
 }
 
-/* CONSTRUTOR 8: CÔMODA / CRIADO-MUDO / GAVETEIRO */
-function buildChest(spec) {
+/* CONSTRUTOR 9: PROJETO DO MODO EDITOR (lista de peças em cm) */
+function cfgFor(c) { return FINISHES[c] || PAINT_BUCKETS.find((b) => b.id === c) || FINISHES[currentFinish]; }
+
+function buildCustom(spec) {
   clearFurniture();
-  const w = spec.wCm / 100, h = spec.hCm / 100, d = spec.dCm / 100, t = 0.022, legH = 0.1;
-  const bodyH = h - legH, rows = Math.max(1, spec.levels || 3);
-  const mk = (sx, sy, sz, x, y, z, rot = false) => { const m = new THREE.Mesh(boxGeo(sx, sy, sz), createPartWoodMaterial(rot)); m.position.set(x, y, z); return m; };
-  registerPart(mk(w, t, d, 0, legH + t / 2, 0, true), { x: 0, y: -0.15, z: 0.25 }, { name: 'Base Inferior', dimsCm: { w: spec.wCm, h: 2.2, d: spec.dCm } });
-  registerPart(mk(w, t, d, 0, h - t / 2, 0, true), { x: 0, y: 0.55, z: 0 }, { name: 'Tampo Superior', dimsCm: { w: spec.wCm, h: 2.2, d: spec.dCm } });
-  [-1, 1].forEach((k) => registerPart(mk(t, bodyH - 2 * t, d, k * (w / 2 - t / 2), legH + bodyH / 2, 0), { x: k * 0.45, y: 0.1, z: 0 }, {
-    name: k < 0 ? 'Parede Lateral Esquerda' : 'Parede Lateral Direita', dimsCm: { w: 2.2, h: Math.round((bodyH - 2 * t) * 100), d: spec.dCm }
-  }));
-  const feet = new THREE.Group();
-  [-1, 1].forEach((ix) => [-1, 1].forEach((iz) => {
-    const f = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.014, legH, 16), createPartWoodMaterial(false));
-    f.position.set(ix * (w / 2 - 0.05), legH / 2, iz * (d / 2 - 0.05)); feet.add(f);
-  }));
-  registerPart(feet, { x: 0, y: -0.25, z: 0 }, { name: 'Pés (4)', dimsCm: { w: 4.4, h: 10, d: 4.4 } });
-  const innerH = bodyH - 2 * t, dh = innerH / rows;
-  for (let i = 0; i < rows; i++) {
-    const g = new THREE.Group();
-    g.position.set(0, legH + t + dh * (rows - i - 0.5), d / 2 - t / 2);
-    const front = new THREE.Mesh(boxGeo(w - 2 * t - 0.006, dh - 0.006, t), createPartWoodMaterial(false));
-    g.add(front);
-    const hd = new THREE.Mesh(boxGeo(Math.min(0.16, w * 0.3), 0.014, 0.02), chromeMat);
-    hd.position.set(0, 0, 0.02); hd.userData.nonPaintable = true; g.add(hd);
-    const box = new THREE.Mesh(boxGeo(w - 2 * t - 0.05, dh * 0.7, d - 0.08), createPartWoodMaterial(false));
-    box.position.set(0, -0.01, -(d - 0.08) / 2); g.add(box);
-    const p = registerPart(g, { x: 0.3, y: 0.04 * i, z: 0.55 + i * 0.08 }, {
-      name: `Gaveta ${rows - i}`, dimsCm: { w: Math.round((w - 2 * t) * 100), h: Math.round(dh * 100), d: spec.dCm - 8 }
-    });
-    registerOpenable(p, { openOffset: new THREE.Vector3(0, 0, 0.24) });
-  }
+  const cy = spec.hCm / 2;
+  spec.parts.forEach((q) => {
+    const w = q.w / 100, h = q.h / 100, d = q.d / 100, pos = new THREE.Vector3(q.x / 100, q.y / 100, q.z / 100);
+    const metal = q.c === 'metal';
+    const mat = metal ? metalMat : q.c === 'stone' ? createStonePartMaterial() : createPartWoodMaterial(h < w && h < d, cfgFor(q.c));
+    const mesh = new THREE.Mesh(boxGeo(w, h, d), mat);
+    if (metal) mesh.userData.nonPaintable = true;
+    const exOff = { x: pos.x * 0.5, y: (q.y - cy) * 0.0035, z: 0.2 + Math.abs(pos.x) * 0.15 };
+    const dimsCm = { w: q.w, h: q.h, d: q.d };
+    let info;
+    if (q.t === 'porta') {
+      const pv = new THREE.Group(); pv.position.set(pos.x - w / 2, pos.y, pos.z); mesh.position.x = w / 2; pv.add(mesh);
+      info = registerPart(pv, exOff, { name: q.n, dimsCm });
+      registerOpenable(info, { openRotY: -Math.PI * 0.54 });
+    } else {
+      mesh.position.copy(pos);
+      info = registerPart(mesh, exOff, { name: q.n, dimsCm, paintable: !metal && q.c !== 'stone' });
+      if (q.t === 'gaveta') registerOpenable(info, { openOffset: new THREE.Vector3(0, 0, 0.26) });
+    }
+    const bucket = PAINT_BUCKETS.find((b) => b.id === q.c);
+    if (bucket) { info.paintedBucketId = bucket.id; info.paintedColorName = bucket.short; }
+  });
 }
 
 /* ==========================================================================
@@ -1390,7 +1299,7 @@ function clearDimensionLines3D() {
 
 function addDimensionRuler3D(pStart, pEnd, labelText) {
   const lineMat = new THREE.LineBasicMaterial({
-    color: 0x9caf88,
+    color: 0xc86d51,
     transparent: true,
     opacity: 0.9
   });
@@ -1403,7 +1312,7 @@ function addDimensionRuler3D(pStart, pEnd, labelText) {
   // Pequenas marcas nas pontas da cota
   [pStart, pEnd].forEach((pt) => {
     const tickGeo = new THREE.SphereGeometry(0.018, 10, 10);
-    const tickMat = new THREE.MeshBasicMaterial({ color: 0xe9dfcf });
+    const tickMat = new THREE.MeshBasicMaterial({ color: 0x4a3525 });
     const tick = new THREE.Mesh(tickGeo, tickMat);
     tick.position.copy(pt);
     dimensionLinesGroup.add(tick);
@@ -1679,7 +1588,7 @@ for (let i = 0; i < dustCount; i++) {
 dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPositions, 3));
 
 const dustMat = new THREE.PointsMaterial({
-  color: 0xe9dfcf,
+  color: 0xc86d51,
   size: 0.014,
   transparent: true,
   opacity: 0.32
@@ -1726,19 +1635,24 @@ function buildFromSpec(spec) {
   if (spec.category === 'armario') buildProceduralCabinet(spec);
   if (spec.category === 'metalon') buildMetalon(spec);
   if (spec.category === 'comoda') buildChest(spec);
+  if (spec.category === 'modular') buildModular(spec);
+  if (spec.category === 'custom') buildCustom(spec);
 
   setupDetailedBlueprint(spec);
+  addHardware(spec);
 
   doorsBtnText.textContent = hasLedFeature ? 'Acender LED' : 'Abrir portas';
-  doorsBtn.style.display = spec.category === 'metalon' ? 'none' : '';
+  doorsBtn.style.display = spec.category === 'metalon' && !spec.drawer ? 'none' : '';
   frameCameraToModel(spec.wCm / 100, spec.hCm / 100);
 
-  const originTag = spec.isAutoImagined ? ' · Medidas sugeridas pelo site' : '';
+  const originTag = (spec.isAutoImagined ? ' · Medidas sugeridas pelo site' : '') + (spec.fallback ? ' · Não identifiquei o tipo de móvel: use o Modo Editor para personalizar' : '');
   const doorsInfo = spec.category === 'balcao_ripado'
-    ? 'Ripado + LED'
+    ? `Ripado + LED ${(spec.opts && spec.opts.led) || 'quente'}${spec.opts && spec.opts.divider ? ` + ${spec.opts.divider} divisória(s)` : ''}${spec.opts && spec.opts.backShelves ? ` + ${spec.opts.backShelves} prateleiras atrás (gire o 3D)` : ''}`
     : spec.category === 'estante'
       ? 'Nichos sob medida'
-      : spec.category === 'metalon'
+      : spec.category === 'modular' || spec.category === 'custom'
+        ? `${animatedParts.length} peças`
+        : spec.category === 'metalon'
         ? 'Estrutura Metalon 30×30'
         : spec.category === 'comoda'
           ? `${spec.levels} gavetas`
@@ -1854,6 +1768,7 @@ detailModeBtn.addEventListener('click', () => {
   detailPanel.classList.toggle('hidden', !detailModeActive);
 
   dimensionLinesGroup.visible = detailModeActive;
+  setHardwareVisible(detailModeActive);
   document.getElementById('dimensionOverlay').classList.toggle('hidden', !detailModeActive);
 
   isAutoBuilding = false;
@@ -2003,6 +1918,7 @@ doorsBtn.addEventListener('click', () => {
       detailModeBtn.classList.remove('active');
       detailPanel.classList.add('hidden');
       dimensionLinesGroup.visible = false;
+      setHardwareVisible(false);
       document.getElementById('dimensionOverlay').classList.add('hidden');
     }
   }
@@ -2156,6 +2072,7 @@ function animate() {
       py += part.openable.openOffset.y * op;
       pz += part.openable.openOffset.z * op;
       ry += part.openable.openRotY * op;
+      rx += part.openable.openRotX * op;
     }
 
     part.obj.position.set(px, py, pz);
@@ -2215,6 +2132,131 @@ resizeStage();
 initPaintBucketsUI();
 
 // Inicia com Armário de Pia montando ao abrir a página
+
+/* ==========================================================================
+   FERRAGENS NO 3D (aparecem só no Modo Detalhado, em "raio-X" cobre)
+   ========================================================================== */
+const hwMat = new THREE.MeshBasicMaterial({ color: 0xc86d51, depthTest: false, transparent: true, opacity: 0.95 });
+const hwGeo = {
+  screw: new THREE.CylinderGeometry(0.0055, 0.0055, 0.006, 10),
+  cup: new THREE.CylinderGeometry(0.0175, 0.0175, 0.004, 20),
+  plate: new THREE.BoxGeometry(0.045, 0.04, 0.004)
+};
+let hardwareMarks = [];
+
+function setHardwareVisible(v) { hardwareMarks.forEach((m) => { m.visible = v; }); }
+
+function addHardware(spec) {
+  hardwareMarks = [];
+  furnitureRoot.updateMatrixWorld(true);
+  const mk = (geo, parent, x, y, z, rx = 0, ry = 0, rz = 0) => {
+    const m = new THREE.Mesh(geo, hwMat);
+    m.position.set(x, y, z); m.rotation.set(rx, ry, rz);
+    m.renderOrder = 10; m.visible = detailModeActive; m.raycast = () => {};
+    parent.add(m); hardwareMarks.push(m);
+  };
+  const boxes = animatedParts.map((p) => ({ p, b: new THREE.Box3().setFromObject(p.obj) }));
+  const v3 = new THREE.Vector3();
+
+  // 1) Parafusos Confirmat nas laterais, onde cada travessa/base/tampo encosta
+  const sides = boxes.filter((o) => /^(Parede Lateral|Lateral Aéreo)/.test(o.p.name));
+  const horiz = boxes.filter((o) => /^(Base Inferior|Tampo Superior|Travessa|Prateleira Maleiro|Base Balcão|Base Armário Aéreo|Tampo Armário Aéreo)/.test(o.p.name) || (spec.category === 'estante' && /^Prateleira/.test(o.p.name)));
+  horiz.forEach((hz) => {
+    const yC = (hz.b.min.y + hz.b.max.y) / 2, depth = hz.b.max.z - hz.b.min.z, n = Math.max(2, Math.ceil((depth * 100) / 25));
+    sides.forEach((sd) => {
+      const cx = (sd.b.min.x + sd.b.max.x) / 2;
+      if (yC < sd.b.min.y - 0.01 || yC > sd.b.max.y + 0.01 || hz.b.min.x > cx + 0.05 || hz.b.max.x < cx - 0.05) return;
+      const outer = cx < 0 ? sd.b.min.x : sd.b.max.x;
+      for (let i = 0; i < n; i++) {
+        v3.set(outer, yC, hz.b.min.z + 0.05 + (depth - 0.1) * (i / (n - 1)));
+        sd.p.obj.worldToLocal(v3);
+        mk(hwGeo.screw, sd.p.obj, v3.x, v3.y, v3.z, 0, 0, Math.PI / 2);
+      }
+    });
+  });
+
+  animatedParts.forEach((p) => {
+    const first = p.obj.isMesh ? p.obj : p.obj.children.find((c) => c.isMesh);
+    const gp = first && first.geometry && first.geometry.parameters;
+    // 2) Dobradiças (copo 35 mm + base) na borda da dobradiça
+    if (/^Porta/.test(p.name) && !/Correr|Basculante/.test(p.name) && gp) {
+      const sign = Math.sign(first.position.x) || 1, H = gp.height;
+      const hn = H * 100 <= 100 ? 2 : H * 100 <= 160 ? 3 : H * 100 <= 200 ? 4 : 5;
+      for (let i = 0; i < hn; i++) {
+        const y = hn === 1 ? 0 : -H / 2 + 0.1 + (i * (H - 0.2)) / (hn - 1);
+        mk(hwGeo.cup, p.obj, sign * 0.0225, y, -0.011, Math.PI / 2);
+        mk(hwGeo.plate, p.obj, -sign * 0.02, y, -0.018);
+      }
+    }
+    if (/Basculante/.test(p.name) && gp) {
+      [-1, 1].forEach((k) => mk(hwGeo.cup, p.obj, k * (gp.width / 2 - 0.05), -0.015, -0.011, Math.PI / 2));
+    }
+    // 3) Corrediças das gavetas (par de trilhos) + parafusos
+    if (/^Gaveta/.test(p.name) && p.dimsCm) {
+      const sl = [60, 55, 50, 45, 40, 35, 30, 25].find((v) => v <= p.dimsCm.d - 3) || 25, wdt = p.dimsCm.w / 100;
+      [-1, 1].forEach((k) => {
+        mk(new THREE.BoxGeometry(0.012, 0.022, sl / 100), p.obj, k * (wdt / 2 - 0.004), -0.02, -sl / 200);
+        [0.1, 0.5, 0.9].forEach((f) => mk(hwGeo.screw, p.obj, k * (wdt / 2 - 0.004), -0.02, -(sl / 100) * f, 0, 0, Math.PI / 2));
+      });
+    }
+    // 4) Tampos de metalon: 4 parafusos chipboard na face superior
+    if (spec.category === 'metalon' && /^(Tampo|Prateleira \d)/.test(p.name) && gp) {
+      [-1, 1].forEach((ix) => [-1, 1].forEach((iz) => mk(hwGeo.screw, p.obj, ix * (gp.width / 2 - 0.05), gp.height / 2 + 0.002, iz * (gp.depth / 2 - 0.05))));
+    }
+  });
+  if (spec.category === 'metalon') {
+    // pontos de solda nas pontas das travessas (marcação nos cantos)
+    const fr = animatedParts.find((p) => /Estrutura Metalon/.test(p.name));
+    if (fr) fr.obj.children.forEach((t) => { if (t.geometry && t.geometry.parameters.height <= 0.031) mk(hwGeo.screw, fr.obj, t.position.x + (t.geometry.parameters.width / 2 - 0.004) * (t.position.x > 0 ? 1 : -1), t.position.y, t.position.z, Math.PI / 2); });
+  }
+}
+
+/* ==========================================================================
+   MODO EDITOR: exportar peças do modelo atual, abrir editor.html e restaurar
+   ========================================================================== */
+function exportParts() {
+  animatedParts.forEach((p) => { p.obj.position.copy(p.targetPos); p.obj.rotation.copy(p.targetRot); });
+  furnitureRoot.updateMatrixWorld(true);
+  const raw = [], c = new THREE.Vector3(), box = new THREE.Box3();
+  const colorOf = (p, m) => p.paintedBucketId || (m && m.userData && m.userData.isStone ? 'stone' : null) || currentFinish;
+  animatedParts.forEach((p) => {
+    const typ = /^Porta/.test(p.name) ? 'porta' : /^Gaveta/.test(p.name) ? 'gaveta' : /Ripad/.test(p.name) ? 'ripado' : /^Pés/.test(p.name) ? 'pe' : 'painel';
+    if (/Estrutura Metalon/.test(p.name)) {
+      p.obj.children.forEach((m, i) => { if (hardwareMarks.includes(m) || !m.geometry || !m.geometry.parameters || !m.geometry.parameters.width) return; const g = m.geometry.parameters; m.getWorldPosition(c); raw.push({ t: 'tubo', n: `Tubo Metalon ${i + 1}`, w: g.width * 100, h: g.height * 100, d: g.depth * 100, x: c.x * 100, y: c.y * 100, z: c.z * 100, c: 'metal' }); });
+      return;
+    }
+    const real = (m) => m.isMesh && !hardwareMarks.includes(m);
+    const first = p.obj.isMesh ? p.obj : p.obj.children.find((m) => real(m) && !m.userData.nonPaintable) || p.obj.children.find(real);
+    const g = first && first.geometry && first.geometry.parameters;
+    const useBox = !g || !g.width || typ === 'ripado' || typ === 'pe';
+    let sz;
+    if (useBox) { box.setFromObject(p.obj); box.getCenter(c); sz = box.getSize(new THREE.Vector3()); } else { first.getWorldPosition(c); sz = new THREE.Vector3(g.width, g.height, g.depth); }
+    const isStone = first && first.material && first.material.color && first.material.color.getHex() === 0xefe7da;
+    raw.push({ t: typ, n: p.name, w: sz.x * 100, h: sz.y * 100, d: sz.z * 100, x: c.x * 100, y: c.y * 100, z: c.z * 100, c: isStone ? 'stone' : colorOf(p, first) });
+  });
+  const minX = Math.min(...raw.map((q) => q.x - q.w / 2)), maxX = Math.max(...raw.map((q) => q.x + q.w / 2));
+  const minZ = Math.min(...raw.map((q) => q.z - q.d / 2)), maxZ = Math.max(...raw.map((q) => q.z + q.d / 2));
+  const r1 = (v) => Math.round(v * 10) / 10;
+  return {
+    name: currentSpec.displayTitle, finish: currentFinish,
+    parts: raw.map((q) => ({ ...q, w: r1(q.w), h: r1(q.h), d: r1(q.d), x: r1(q.x - (minX + maxX) / 2), y: r1(q.y), z: r1(q.z - (minZ + maxZ) / 2) }))
+  };
+}
+
+function customSpecFrom(data) {
+  const ps = data.parts;
+  const W = Math.max(...ps.map((q) => q.x + q.w / 2)) - Math.min(...ps.map((q) => q.x - q.w / 2));
+  const H = Math.max(...ps.map((q) => q.y + q.h / 2));
+  const D = Math.max(...ps.map((q) => q.z + q.d / 2)) - Math.min(...ps.map((q) => q.z - q.d / 2));
+  return { category: 'custom', displayTitle: data.name || 'Projeto do Editor', parts: ps, wCm: Math.round(W), hCm: Math.round(H), dCm: Math.round(D), doorCount: 0, hasShelf: true, hasDrawers: true, isAutoImagined: false, catalogId: 'editor', suggestedFinish: data.finish || null };
+}
+
+function openEditor() {
+  try { localStorage.setItem('zf_project', JSON.stringify(exportParts())); } catch (e) { /* sem storage */ }
+  location.href = 'editor.html';
+}
+document.getElementById('openEditorBtn').addEventListener('click', openEditor);
+
 function restoreProject(data) {
   buildFromSpec(data.s);
   if (data.f && FINISHES[data.f]) {
@@ -2233,7 +2275,27 @@ try {
   if (m) sharedProject = JSON.parse(decodeURIComponent(m[1]));
 } catch (err) { sharedProject = null; }
 
-if (sharedProject && sharedProject.s) {
+function readHashProject() {
+  try {
+    const mc = location.hash.match(/^#c=(.+)$/);
+    if (mc) {
+      const [name, ...rows] = mc[1].split('~');
+      const parts = rows.map((r) => { const f = r.split('_'); return { t: f[0], n: decodeURIComponent(f[1]), w: +f[2], h: +f[3], d: +f[4], x: +f[5], y: +f[6], z: +f[7], c: f[8] }; });
+      return { kind: 'custom', data: { name: decodeURIComponent(name), parts } };
+    }
+    if (location.hash === '#edit') {
+      const data = JSON.parse(localStorage.getItem('zf_project') || 'null');
+      if (data && data.parts) { history.replaceState(null, '', location.pathname); return { kind: 'custom', data, fromEditor: true }; }
+    }
+  } catch (err) { /* ignora */ }
+  return null;
+}
+const hashProject = readHashProject();
+
+if (hashProject) {
+  buildFromSpec(customSpecFrom(hashProject.data));
+  if (!hashProject.fromEditor) detailModeBtn.click();
+} else if (sharedProject && sharedProject.s) {
   restoreProject(sharedProject);
   detailModeBtn.click();
 } else {
@@ -2274,6 +2336,7 @@ const formFeedback = document.getElementById('formFeedback');
 const WHATS_NUMBER = '5521982814880';
 
 function encodeProject() {
+  if (currentSpec.category === 'custom') return 'c=' + encodeURIComponent(currentSpec.displayTitle) + '~' + currentSpec.parts.map((q) => [q.t, encodeURIComponent(q.n), q.w, q.h, q.d, q.x, q.y, q.z, q.c].join('_')).join('~');
   const paints = [];
   animatedParts.forEach((p, i) => { if (p.paintedBucketId) paints.push([i, p.paintedBucketId]); });
   return encodeURIComponent(JSON.stringify({ s: currentSpec, f: currentFinish, p: paints }));
@@ -2283,9 +2346,10 @@ function buildWhatsMessage(name, notes) {
   const sp = currentSpec;
   const bom = computeBOM(sp, animatedParts);
   const paints = animatedParts.filter((p) => p.paintedColorName).map((p) => `${p.name}: ${p.paintedColorName}`).join('; ') || 'sem pintura personalizada';
-  const link = `${location.href.split('#')[0]}#p=${encodeProject()}`;
+  const ep = encodeProject();
+  const link = `${location.href.split('#')[0]}#${ep.startsWith('c=') ? ep : 'p=' + ep}`;
   return [
-    '*Pedido de móvel — Madeira & Grão*',
+    '*Pedido de móvel — ZacFurniture*',
     `Cliente: ${name}`,
     `Móvel: ${sp.displayTitle} — ${sp.wCm} × ${sp.hCm} × ${sp.dCm} cm`,
     `Código: ${sp.catalogId || 'sob medida'}`,
@@ -2318,24 +2382,25 @@ document.getElementById('saveImageBtn').addEventListener('click', () => {
 });
 
 /* ==========================================================================
-   13. CATÁLOGO DE 1.500+ MÓVEIS (renderiza aos poucos para manter leve)
+   13. CATÁLOGO ESTRUTURAL (miniaturas SVG; renderiza aos poucos)
    ========================================================================== */
 const catGrid = document.getElementById('catalogGrid');
 const catMore = document.getElementById('catalogMore');
 const catCount = document.getElementById('catalogCount');
 const catById = new Map(CATALOG.map((it) => [it.id, it]));
+const norm = (v) => v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 let catFamily = 'all', catQuery = '', catShown = 24;
 
 function renderCatalog() {
-  const q = catQuery.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  const list = CATALOG.filter((it) => (catFamily === 'all' || it.fam === catFamily) &&
-    (!q || `${it.name} ${it.finName} ${it.famName}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(q)));
-  catCount.textContent = `${list.length.toLocaleString('pt-BR')} móveis`;
+  const q = norm(catQuery);
+  const list = CATALOG.filter((it) => (catFamily === 'all' || it.fam === catFamily) && (!q || norm(`${it.name} ${it.famName}`).includes(q)));
+  catCount.textContent = `${list.length.toLocaleString('pt-BR')} modelos`;
   catGrid.innerHTML = list.slice(0, catShown).map((it) => `
     <article class="cat-card">
+      ${thumbSvg(it)}
       <span class="cat-tag fam-${it.fam}">${it.famName}</span>
       <strong>${it.name}</strong>
-      <small>${it.w} × ${it.h} × ${it.d} cm · ${it.finName}</small>
+      <small>${it.w} × ${it.h} × ${it.d} cm · ${it.id}</small>
       <button type="button" class="text-action" data-id="${it.id}">Montar no 3D &rarr;</button>
     </article>`).join('');
   catMore.style.display = list.length > catShown ? '' : 'none';

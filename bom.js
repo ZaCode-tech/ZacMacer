@@ -32,13 +32,17 @@ export function computeBOM(spec, parts) {
   add(`Parafuso Confirmat ${conf} mm (painel 22 mm)`, confirmats, 'uma a cada 25 cm de profundidade, 2 por encontro');
   add('Cavilha de madeira 8 × 30 mm', confirmats, 'junto de cada Confirmat, trava o painel');
 
-  if (spec.category !== 'estante') {
+  if (spec.category !== 'estante' && spec.category !== 'modular') {
     const pins = find(/^Prateleira(?! Maleiro)/).length;
     add('Suporte de prateleira (pino Ø 5 mm)', pins * 4);
   }
 
-  const doors = find(/^Porta/);
-  const hinges = doors.reduce((s, p) => { const ph = p.dimsCm.h; return s + (ph <= 100 ? 2 : ph <= 160 ? 3 : ph <= 200 ? 4 : 5); }, 0);
+  const doors = find(/^Porta/).filter((p) => !/Correr|Basculante/.test(p.name));
+  const flaps = find(/Basculante/), sliders = find(/Correr/);
+  const hingesBase = doors.reduce((s, p) => { const ph = p.dimsCm.h; return s + (ph <= 100 ? 2 : ph <= 160 ? 3 : ph <= 200 ? 4 : 5); }, 0);
+  const hinges = hingesBase + flaps.length * 2;
+  add('Pistão a gás 60 N (porta basculante)', flaps.length * 2);
+  add('Kit trilho de correr (trilho duplo + roldanas)', sliders.length);
   add('Dobradiça de caneco 35 mm com amortecedor', hinges, 'até 100 cm: 2 · até 160: 3 · até 200: 4 · acima: 5');
   add('Parafuso 3,5 × 13 mm (dobradiças)', hinges * 4, '2 na base + 2 no caneco');
 
@@ -51,18 +55,25 @@ export function computeBOM(spec, parts) {
     add('Parafuso 4,0 × 40 mm (caixa da gaveta)', drawers.length * 8);
   }
 
-  add('Puxador', doors.length + drawers.length);
-  add('Parafuso M4 × 40 mm (puxador, painel 22 mm + 15 mm)', (doors.length + drawers.length) * 2);
+  const handles = doors.length + drawers.length + flaps.length + sliders.length;
+  add('Puxador', handles);
+  add('Parafuso M4 × 40 mm (puxador, painel 22 mm + 15 mm)', handles * 2);
 
   if (!['balcao_ripado'].includes(spec.category)) {
     add('Parafuso 3,0 × 16 mm (fundo de 6 mm)', Math.ceil((2 * (w + h)) / 20), 'a cada 20 cm no perímetro');
   }
 
-  const rip = parts.find((p) => /ripas\)/.test(p.name));
-  if (rip) {
-    const n = +(rip.name.match(/\((\d+) ripas/) || [0, 0])[1];
-    add('Pino de aço 1,2 × 25 mm (ripas) + cola PU', n * Math.ceil(rip.dimsCm.h / 20), 'um a cada 20 cm de ripa');
-    add('Fita/perfil LED quente + fonte 12 V', 1);
+  const rips = find(/ripas\)/);
+  if (rips.length) {
+    const pins = rips.reduce((s, p) => s + (+(p.name.match(/\((\d+) ripas/) || [0, 0])[1]) * Math.ceil(p.dimsCm.h / 20), 0);
+    add('Pino de aço 1,2 × 25 mm (ripas) + cola PU', pins, 'um a cada 20 cm de ripa');
+  }
+  if (find(/LED/).length) add('Fonte 12 V + fita LED (perfil de alumínio)', 1);
+  const tubes = find(/^Tubo/);
+  if (tubes.length) {
+    const g = {};
+    tubes.forEach((p) => { const L = Math.round(Math.max(p.dimsCm.w, p.dimsCm.h, p.dimsCm.d)); g[L] = (g[L] || 0) + 1; });
+    Object.entries(g).forEach(([L, q]) => add(`Metalon 30 × 30 × 1,2 mm, ${L} cm`, q, 'solda MIG'));
   }
 
   if (find(/Cabideiro/).length) {

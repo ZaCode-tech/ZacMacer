@@ -3,7 +3,10 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 
 export function boxGeo(w, h, d) {
   const m = Math.min(w, h, d);
-  return m < 0.012 ? new THREE.BoxGeometry(w, h, d) : new RoundedBoxGeometry(w, h, d, 2, Math.min(0.0025, m * 0.3));
+  if (m < 0.012) return new THREE.BoxGeometry(w, h, d);
+  const g = new RoundedBoxGeometry(w, h, d, 2, Math.min(0.0025, m * 0.3));
+  g.parameters = { ...g.parameters, width: w, height: h, depth: d }; // medidas reais (usadas nas ferragens e no editor)
+  return g;
 }
 
 /* ==========================================================================
