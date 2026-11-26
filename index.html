@@ -148,6 +148,11 @@
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/></svg>
               <span>Modo Detalhado (cm / m)</span>
             </button>
+
+            <button type="button" class="mode-tab-btn" id="arCameraBtn" title="Abrir câmera para ver o móvel no ambiente em tamanho real">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+              <span>Ver no Ambiente (AR)</span>
+            </button>
           </div>
 
           <!-- Gaveta do Modo Pintor (Balde de Tinta + Pincel) -->
@@ -233,6 +238,11 @@
                 <button class="icon-action-btn" id="doorsBtn" title="Abrir ou fechar todas as portas e gavetas">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 3v18"/><path d="M9 12h.01"/><path d="M15 12h.01"/></svg>
                   <span id="doorsBtnText">Abrir portas</span>
+                </button>
+
+                <button class="icon-action-btn" id="stageSave360Btn" title="Gerar e baixar imagem 360° interativa ao toque">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+                  <span>Salvar 360°</span>
                 </button>
               </div>
 
@@ -473,7 +483,7 @@
           <button type="submit" class="btn btn-sage btn-lg btn-block">
             Pedir pelo WhatsApp com o projeto exato
           </button>
-          <button type="button" class="btn btn-glass btn-block" id="saveImageBtn">Baixar imagem do projeto</button>
+          <button type="button" class="btn btn-glass btn-block" id="saveImageBtn">Baixar imagem 360° interativa</button>
           <p class="form-feedback" id="formFeedback" role="status"></p>
         </form>
       </div>
