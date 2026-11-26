@@ -4,6 +4,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { boxGeo, FINISHES, PAINT_BUCKETS, createWoodTexturesFromConfig } from './shared.js';
 import { CATALOG, specFromItem, detectCustom, parseDna, thumbSvg } from './catalog.js';
 import { computeBOM, countScrews } from './bom.js';
+import { initARAnd360 } from './ar-and-360.js';
 
 /* ==========================================================================
    2. CENA 3D, ILUMINAÇÃO DE ESTÚDIO E CONTROLES DE CÂMERA
@@ -948,7 +949,7 @@ function buildProceduralSlatted(spec) {
       name: 'Caixa Estrutural Interna',
       dimsCm: { w: spec.wCm - 6, h: spec.hCm - 8, d: spec.dCm - 7 }
     });
-}
+  }
 
   const slatCount = Math.max(16, Math.round(w * 18));
   const slatW = 0.024;
@@ -1121,7 +1122,6 @@ function buildProceduralCabinet(spec) {
     });
   }
 }
-
 
 /* CONSTRUTOR 7: MÓVEIS DE SERRALHERIA METALON (mesa, rack, estante, banco, aparador) */
 const metalMat = new THREE.MeshStandardMaterial({ color: 0x1c1d20, roughness: 0.45, metalness: 0.8 });
@@ -1602,6 +1602,7 @@ scene.add(woodDust);
 let assemblyProgress = 0;
 let targetAssembly = 1;
 let isAutoBuilding = true;
+let isAROr360Active = false;
 
 const explodeRange = document.getElementById('explodeRange');
 const assemblyStatus = document.getElementById('assemblyStatus');
@@ -1731,6 +1732,40 @@ function applyFinish(finishKey) {
     mat.roughness = cfg.roughness;
     mat.metalness = cfg.metalness;
     mat.needsUpdate = true;
+  });
+}
+
+function syncPartsTransformsImmediate() {
+  const totalParts = animatedParts.length;
+  animatedParts.forEach((part, idx) => {
+    const startWindow = (idx / Math.max(totalParts, 1)) * 0.45;
+    const localRaw = THREE.MathUtils.clamp(
+      (assemblyProgress - startWindow) / (1 - startWindow),
+      0,
+      1
+    );
+    const eased = easeOutBack(localRaw);
+    const inv = 1 - eased;
+
+    let px = part.targetPos.x + part.explodeOffset.x * inv;
+    let py = part.targetPos.y + part.explodeOffset.y * inv;
+    let pz = part.targetPos.z + part.explodeOffset.z * inv;
+
+    let rx = part.targetRot.x + part.explodeRot.x * inv;
+    let ry = part.targetRot.y + part.explodeRot.y * inv;
+    let rz = part.targetRot.z + part.explodeRot.z * inv;
+
+    if (part.openable && assemblyProgress > 0.85) {
+      const op = part.openable.currentProgress;
+      px += part.openable.openOffset.x * op;
+      py += part.openable.openOffset.y * op;
+      pz += part.openable.openOffset.z * op;
+      ry += part.openable.openRotY * op;
+      rx += part.openable.openRotX * op;
+    }
+
+    part.obj.position.set(px, py, pz);
+    part.obj.rotation.set(rx, ry, rz);
   });
 }
 
@@ -1897,7 +1932,7 @@ window.addEventListener('pointerup', (e) => {
 });
 
 // Botão Abrir/Fechar todas as portas e gavetas
-doorsBtn.addEventListener('click', () => {
+function toggleDoorsOrLedAction() {
   if (hasLedFeature) {
     const isBright = ledStripMat.emissiveIntensity > 1.2;
     ledStripMat.emissiveIntensity = isBright ? 0.35 : 2.2;
@@ -1928,7 +1963,9 @@ doorsBtn.addEventListener('click', () => {
     item.targetProgress = doorsOpen ? 1 : 0;
   });
   doorsBtnText.textContent = doorsOpen ? 'Fechar portas' : 'Abrir portas';
-});
+}
+
+doorsBtn.addEventListener('click', toggleDoorsOrLedAction);
 
 // Eventos do Criador Sob Medida
 document.getElementById('generateFurnitureBtn').addEventListener('click', () => runCreator());
@@ -2019,11 +2056,25 @@ const clock = new THREE.Clock();
 
 let rafId = 0;
 let stageVisible = true;
-new IntersectionObserver(([e]) => { stageVisible = e.isIntersecting; if (stageVisible && !rafId) { clock.getDelta(); animate(); } }).observe(container);
-document.addEventListener('visibilitychange', () => { if (!document.hidden && stageVisible && !rafId) { clock.getDelta(); animate(); } });
+new IntersectionObserver(([e]) => {
+  stageVisible = e.isIntersecting;
+  if ((stageVisible || isAROr360Active) && !rafId) {
+    clock.getDelta();
+    animate();
+  }
+}).observe(container);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && (stageVisible || isAROr360Active) && !rafId) {
+    clock.getDelta();
+    animate();
+  }
+});
 
 function animate() {
-  if (!stageVisible || document.hidden) { rafId = 0; return; }
+  if ((!stageVisible && !isAROr360Active) || document.hidden) {
+    rafId = 0;
+    return;
+  }
   rafId = requestAnimationFrame(animate);
   const delta = Math.min(clock.getDelta(), 0.05);
   const elapsed = clock.getElapsedTime();
@@ -2046,38 +2097,7 @@ function animate() {
   });
 
   // Posiciona cada peça (montagem + abertura real das portas/gavetas)
-  const totalParts = animatedParts.length;
-  animatedParts.forEach((part, idx) => {
-    const startWindow = (idx / Math.max(totalParts, 1)) * 0.45;
-    const localRaw = THREE.MathUtils.clamp(
-      (assemblyProgress - startWindow) / (1 - startWindow),
-      0,
-      1
-    );
-    const eased = easeOutBack(localRaw);
-    const inv = 1 - eased;
-
-    let px = part.targetPos.x + part.explodeOffset.x * inv;
-    let py = part.targetPos.y + part.explodeOffset.y * inv;
-    let pz = part.targetPos.z + part.explodeOffset.z * inv;
-
-    let rx = part.targetRot.x + part.explodeRot.x * inv;
-    let ry = part.targetRot.y + part.explodeRot.y * inv;
-    let rz = part.targetRot.z + part.explodeRot.z * inv;
-
-    // Aplica abertura real das dobradiças / corrediças sem conflitar com a montagem
-    if (part.openable && assemblyProgress > 0.85) {
-      const op = part.openable.currentProgress;
-      px += part.openable.openOffset.x * op;
-      py += part.openable.openOffset.y * op;
-      pz += part.openable.openOffset.z * op;
-      ry += part.openable.openRotY * op;
-      rx += part.openable.openRotX * op;
-    }
-
-    part.obj.position.set(px, py, pz);
-    part.obj.rotation.set(rx, ry, rz);
-  });
+  syncPartsTransformsImmediate();
 
   // Animação da pincelada 3D e gotas de tinta
   if (brush3D.visible) {
@@ -2110,12 +2130,14 @@ function animate() {
     doorsBtnText.textContent = ledLight.intensity > 1 ? 'Suavizar LED' : 'Acender LED';
   }
 
-  woodDust.rotation.y = elapsed * 0.04;
-  furnitureRoot.position.y = Math.sin(elapsed * 1.1) * 0.004;
+  if (!isAROr360Active) {
+    woodDust.rotation.y = elapsed * 0.04;
+    furnitureRoot.position.y = Math.sin(elapsed * 1.1) * 0.004;
 
-  controls.update();
-  renderer.render(scene, camera);
-  updateDetailedCalloutsProjection();
+    controls.update();
+    renderer.render(scene, camera);
+    updateDetailedCalloutsProjection();
+  }
 }
 
 function resizeStage() {
@@ -2130,8 +2152,6 @@ function resizeStage() {
 window.addEventListener('resize', resizeStage);
 resizeStage();
 initPaintBucketsUI();
-
-// Inicia com Armário de Pia montando ao abrir a página
 
 /* ==========================================================================
    FERRAGENS NO 3D (aparecem só no Modo Detalhado, em "raio-X" cobre)
@@ -2304,8 +2324,74 @@ if (hashProject) {
 animate();
 
 /* ==========================================================================
-   12. INTERAÇÕES DE PÁGINA, MENU MOBILE E FORMULÁRIO
+   12. CÂMERA EM TAMANHO REAL (AR), IMAGEM 360° INTERATIVA & FORMULÁRIO
    ========================================================================== */
+const arAnd360 = initARAnd360({
+  THREE,
+  scene,
+  camera,
+  renderer,
+  controls,
+  furnitureRoot,
+  plinth,
+  woodDust,
+  dimensionLinesGroup,
+  getCurrentSpec: () => currentSpec,
+  getCurrentFinish: () => currentFinish,
+  getAnimatedParts: () => animatedParts,
+  getFinishLabel: () => (FINISHES[currentFinish] ? FINISHES[currentFinish].labelSelect : currentFinish),
+  toggleDoorsOrLed: toggleDoorsOrLedAction,
+  onBeforeCapture: () => {
+    isAROr360Active = true;
+    brush3D.visible = false;
+    painterTooltip.classList.add('hidden');
+    setHoveredPaintPart(null);
+
+    if (isAutoBuilding || assemblyProgress < 0.99) {
+      isAutoBuilding = false;
+      assemblyProgress = 1;
+      targetAssembly = 1;
+      explodeRange.value = 0;
+      assemblyStatus.textContent = 'Montado';
+    }
+    syncPartsTransformsImmediate();
+
+    const dimOverlay = document.getElementById('dimensionOverlay');
+    if (dimOverlay) dimOverlay.classList.add('hidden');
+    setHardwareVisible(false);
+
+    if (!rafId) {
+      clock.getDelta();
+      animate();
+    }
+  },
+  onAfterCapture: () => {
+    isAROr360Active = false;
+    const dimOverlay = document.getElementById('dimensionOverlay');
+    if (dimOverlay) dimOverlay.classList.toggle('hidden', !detailModeActive);
+    dimensionLinesGroup.visible = detailModeActive;
+    setHardwareVisible(detailModeActive);
+  }
+});
+
+const arCameraBtn = document.getElementById('arCameraBtn');
+if (arCameraBtn) {
+  arCameraBtn.addEventListener('click', () => {
+    arAnd360.openARMode();
+  });
+}
+
+const stageSave360Btn = document.getElementById('stageSave360Btn');
+if (stageSave360Btn) {
+  stageSave360Btn.addEventListener('click', () => {
+    arAnd360.open360Studio();
+  });
+}
+
+document.getElementById('saveImageBtn').addEventListener('click', () => {
+  arAnd360.open360Studio();
+});
+
 const menuToggle = document.getElementById('menuToggle');
 const mobileDrawer = document.getElementById('mobileDrawer');
 
@@ -2371,14 +2457,6 @@ quoteForm.addEventListener('submit', (e) => {
   const url = `https://wa.me/${WHATS_NUMBER}?text=${encodeURIComponent(buildWhatsMessage(name, notes))}`;
   window.open(url, '_blank', 'noopener');
   formFeedback.textContent = `Obrigado, ${name}! Abrindo o WhatsApp com o projeto exato do seu móvel.`;
-});
-
-document.getElementById('saveImageBtn').addEventListener('click', () => {
-  renderer.render(scene, camera);
-  const a = document.createElement('a');
-  a.href = renderer.domElement.toDataURL('image/png');
-  a.download = `projeto-${(currentSpec.catalogId || 'sob-medida')}.png`;
-  a.click();
 });
 
 /* ==========================================================================
