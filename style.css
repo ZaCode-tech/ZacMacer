@@ -1,1619 +1,1156 @@
-/* ==========================================================================
-   PALETA & VARIÁVEIS (Espresso #2B1D16 | Oat #E9DFCF | Sage Green #9CAF88)
-   ========================================================================== */
-:root {
-  --espresso: #2B1D16;
-  --espresso-deep: #1D130E;
-  --espresso-soft: #3B2920;
-  --oat: #E9DFCF;
-  --oat-muted: rgba(74, 53, 37, 0.72);
-  --oat-subtle: rgba(74, 53, 37, 0.14);
-  --sage: #9CAF88;
-  --sage-hover: #ADC099;
-  --glass-bg: rgba(255, 253, 249, 0.56);
-  --glass-card: rgba(255, 253, 249, 0.8);
-  --border-light: rgba(74, 53, 37, 0.16);
-  --radius-xl: 28px;
-  --radius-lg: 20px;
-  --radius-pill: 999px;
-  --transition: 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-html {
-  scroll-behavior: smooth;
-  background-color: var(--espresso-deep);
-  color: var(--oat);
-  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-}
-
-body {
-  min-height: 100vh;
-  overflow-x: hidden;
-  position: relative;
-  background-color: var(--espresso);
-  line-height: 1.55;
-  -webkit-font-smoothing: antialiased;
-}
-
-.hidden {
-  display: none !important;
-}
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { boxGeo, FINISHES, PAINT_BUCKETS, createWoodTexturesFromConfig } from './shared.js';
+import { CATALOG, specFromItem, detectCustom, parseDna, thumbSvg } from './catalog.js';
+import { computeBOM, countScrews } from './bom.js';
+import { initARAnd360 } from './ar-and-360.js';
 
 /* ==========================================================================
-   FUNDO RIPADO EM MADEIRA ESPRESSO
+   1. ANIMAÇÕES 2026–2027 (GSAP + SCROLLTRIGGER, TILT 3D, BLUEPRINT & LÂMINAS)
    ========================================================================== */
-.fluted-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: -2;
-  background-color: var(--espresso);
-  background-image:
-    radial-gradient(circle at 20% 20%, rgba(74, 53, 37, 0.06) 0%, transparent 55%),
-    radial-gradient(circle at 82% 75%, rgba(61, 82, 69, 0.07) 0%, transparent 50%),
-    repeating-linear-gradient(
-      90deg,
-      rgba(255, 253, 249, 0.65) 0px,
-      rgba(255, 253, 249, 0.35) 5px,
-      rgba(255, 253, 249, 0.45) 11px,
-      rgba(255, 253, 249, 0.72) 18px
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function initAtelierMotion() {
+  // 1. Kinetic Masked Typography na entrada
+  if (!prefersReducedMotion && window.gsap) {
+    gsap.from('.line-inner', {
+      yPercent: 110,
+      opacity: 0,
+      duration: 1.05,
+      stagger: 0.14,
+      ease: 'expo.out',
+      clearProps: 'transform'
+    });
+
+    // 2. Painel Ripado Cinético no Fundo (Slatted Wood Parallax)
+    if (window.ScrollTrigger) {
+      gsap.registerPlugin(ScrollTrigger);
+
+      gsap.to('.slat-left', {
+        yPercent: 18,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: 'body',
+          start: 'top top',
+          end: 'bottom bottom',
+          scrub: 0.6
+        }
+      });
+
+      gsap.to('.slat-right', {
+        yPercent: -18,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: 'body',
+          start: 'top top',
+          end: 'bottom bottom',
+          scrub: 0.6
+        }
+      });
+
+      gsap.utils.toArray('.reveal-up').forEach((el) => {
+        gsap.from(el, {
+          y: 26,
+          opacity: 0,
+          duration: 0.85,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: el,
+            start: 'top 88%',
+            once: true
+          }
+        });
+      });
+    }
+  }
+
+  // 3. Spatial 3D Tilt com Brilho Âmbar Quente
+  if (!prefersReducedMotion) {
+    document.querySelectorAll('.tilt-surface').forEach((card) => {
+      card.addEventListener('pointermove', (e) => {
+        if (e.pointerType !== 'mouse') return;
+        const rect = card.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width;
+        const y = (e.clientY - rect.top) / rect.height;
+        const rotY = (x - 0.5) * 5;
+        const rotX = (0.5 - y) * 5;
+
+        card.style.setProperty('--glare-x', `${(x * 100).toFixed(1)}%`);
+        card.style.setProperty('--glare-y', `${(y * 100).toFixed(1)}%`);
+        card.style.transform = `perspective(1200px) rotateX(${rotX.toFixed(2)}deg) rotateY(${rotY.toFixed(2)}deg)`;
+      });
+
+      card.addEventListener('pointerleave', () => {
+        card.style.transform = 'perspective(1200px) rotateX(0deg) rotateY(0deg)';
+      });
+    });
+  }
+
+  // 4. Gaveta Lateral (Side Drawer)
+  const menuToggle = document.getElementById('menuToggle');
+  const mobileDrawer = document.getElementById('mobileDrawer');
+  const drawerBackdrop = document.getElementById('drawerBackdrop');
+  const drawerClose = document.getElementById('drawerClose');
+
+  function setDrawerState(open) {
+    mobileDrawer.classList.toggle('open', open);
+    drawerBackdrop.classList.toggle('open', open);
+    mobileDrawer.setAttribute('aria-hidden', String(!open));
+    menuToggle.setAttribute('aria-expanded', String(open));
+  }
+
+  menuToggle.addEventListener('click', () => setDrawerState(!mobileDrawer.classList.contains('open')));
+  drawerClose.addEventListener('click', () => setDrawerState(false));
+  drawerBackdrop.addEventListener('click', () => setDrawerState(false));
+  document.querySelectorAll('.mobile-link').forEach((link) => {
+    link.addEventListener('click', () => setDrawerState(false));
+  });
+
+  // 5. Proteção de layout mobile para o botão WhatsApp ao focar nos campos de dimensão
+  const waFab = document.getElementById('waFab');
+  const dimInputs = document.querySelectorAll('#dimWidth, #dimHeight, #dimDepth, #customPrompt');
+  dimInputs.forEach((inp) => {
+    inp.addEventListener('focus', () => waFab && waFab.classList.add('dock-hidden'));
+    inp.addEventListener('blur', () => waFab && waFab.classList.remove('dock-hidden'));
+  });
+
+  // 6. Filtro da Galeria de Projetos por Ambiente
+  document.querySelectorAll('.gal-filter').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.gal-filter').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      const env = btn.dataset.env;
+      document.querySelectorAll('#worksGrid .work-card').forEach((card) => {
+        const match = env === 'all' || card.dataset.env === env;
+        card.style.display = match ? '' : 'none';
+      });
+    });
+  });
+}
+
+function triggerBlueprintAnimation(wCm = 120, hCm = 85, dCm = 56) {
+  const box = document.getElementById('planejador');
+  const badge = document.getElementById('blueprintDimBadge');
+  if (badge) {
+    badge.textContent = `${wCm} × ${hCm} × ${dCm} CM`;
+  }
+  if (!box) return;
+  box.classList.remove('drawing-blueprint');
+  void box.offsetWidth;
+  box.classList.add('drawing-blueprint');
+}
+
+/* ==========================================================================
+   2. CENA 3D (ESTÚDIO CARBONIZADO #1B1410 + ILUMINAÇÃO ÂMBAR #D9A773)
+   ========================================================================== */
+const IS_MOBILE = matchMedia('(max-width: 820px)').matches || /Android|iPhone|iPad/i.test(navigator.userAgent);
+const container = document.getElementById('canvasContainer');
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(
+  38,
+  Math.max(container.clientWidth, 1) / Math.max(container.clientHeight, 1),
+  0.1,
+  50
+);
+camera.position.set(2.35, 1.55, 2.85);
+
+const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+  alpha: true,
+  powerPreference: 'high-performance'
+});
+renderer.setSize(container.clientWidth, container.clientHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, IS_MOBILE ? 1.5 : 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.22;
+container.appendChild(renderer.domElement);
+
+const pmremGenerator = new THREE.PMREMGenerator(renderer);
+scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.65;
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.065;
+controls.minDistance = 1.2;
+controls.maxDistance = 7.5;
+controls.maxPolarAngle = Math.PI * 0.49;
+controls.target.set(0, 0.55, 0);
+
+const hemiLight = new THREE.HemisphereLight(0xffe9cf, 0x2b1d14, 0.75);
+scene.add(hemiLight);
+
+// Luz Principal Quente Âmbar (#D9A773)
+const keyLight = new THREE.DirectionalLight(0xd9a773, 2.15);
+keyLight.position.set(3.4, 5.2, 3.6);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(IS_MOBILE ? 1024 : 2048, IS_MOBILE ? 1024 : 2048);
+keyLight.shadow.camera.near = 0.5;
+keyLight.shadow.camera.far = 16;
+keyLight.shadow.camera.left = -2.8;
+keyLight.shadow.camera.right = 2.8;
+keyLight.shadow.camera.top = 3.2;
+keyLight.shadow.camera.bottom = -1.5;
+keyLight.shadow.bias = -0.0005;
+scene.add(keyLight);
+
+const rimLight = new THREE.DirectionalLight(0xffcf9e, 0.72);
+rimLight.position.set(-3.0, 2.5, -2.5);
+scene.add(rimLight);
+
+const shadowFloor = new THREE.Mesh(
+  new THREE.PlaneGeometry(14, 14),
+  new THREE.ShadowMaterial({ opacity: 0.48 })
+);
+shadowFloor.rotation.x = -Math.PI / 2;
+shadowFloor.position.y = 0;
+shadowFloor.receiveShadow = true;
+scene.add(shadowFloor);
+
+// Base circular de exposição em Ébano / Nogueira Escura
+const plinthGeo = new THREE.CylinderGeometry(1.55, 1.6, 0.025, 64);
+const plinthMat = new THREE.MeshStandardMaterial({
+  color: 0x261a14,
+  roughness: 0.75,
+  metalness: 0.12
+});
+const plinth = new THREE.Mesh(plinthGeo, plinthMat);
+plinth.position.y = -0.013;
+plinth.receiveShadow = true;
+scene.add(plinth);
+
+/* ==========================================================================
+   3. MATERIAIS POR PEÇA (PARA PERMITIR PINTURA INDIVIDUAL)
+   ========================================================================== */
+let currentFinish = 'espresso';
+const partMaterials = [];
+
+function createPartWoodMaterial(rotateGrain = false, customCfg = null) {
+  const cfg = customCfg || FINISHES[currentFinish];
+  const { map, bumpMap } = createWoodTexturesFromConfig(cfg);
+  if (rotateGrain) {
+    map.center.set(0.5, 0.5);
+    map.rotation = Math.PI / 2;
+    bumpMap.center.set(0.5, 0.5);
+    bumpMap.rotation = Math.PI / 2;
+  }
+  const mat = new THREE.MeshStandardMaterial({
+    map,
+    bumpMap,
+    bumpScale: 0.008,
+    roughness: cfg.roughness,
+    metalness: cfg.metalness
+  });
+  mat.userData.rotateGrain = rotateGrain;
+  mat.userData.customPaintName = customCfg ? customCfg.short : null;
+  partMaterials.push(mat);
+  return mat;
+}
+
+function createStonePartMaterial() {
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xf4efea,
+    roughness: 0.22,
+    metalness: 0.04
+  });
+  mat.userData.isStone = true;
+  mat.userData.rotateGrain = true;
+  mat.userData.customPaintName = null;
+  partMaterials.push(mat);
+  return mat;
+}
+
+const inoxMat = new THREE.MeshStandardMaterial({
+  color: 0xd8dde2,
+  roughness: 0.22,
+  metalness: 0.88
+});
+
+const chromeMat = new THREE.MeshStandardMaterial({
+  color: 0xe6e8ea,
+  roughness: 0.16,
+  metalness: 0.92
+});
+
+const cavityMat = new THREE.MeshStandardMaterial({
+  color: 0x1b1410,
+  roughness: 0.8
+});
+
+const ledStripMat = new THREE.MeshStandardMaterial({
+  color: 0xffd27d,
+  emissive: 0xd9a773,
+  emissiveIntensity: 0.0,
+  roughness: 0.2
+});
+
+/* ==========================================================================
+   4. PINCEL 3D INTERATIVO & GOTAS DE TINTA
+   ========================================================================== */
+const brush3D = new THREE.Group();
+brush3D.visible = false;
+
+const handleMesh = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.011, 0.016, 0.19, 16),
+  new THREE.MeshStandardMaterial({ color: 0x8c5a32, roughness: 0.45 })
+);
+handleMesh.position.y = 0.16;
+brush3D.add(handleMesh);
+
+const ferruleMesh = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.018, 0.016, 0.032, 16),
+  chromeMat
+);
+ferruleMesh.position.y = 0.055;
+brush3D.add(ferruleMesh);
+
+const bristleMat = new THREE.MeshStandardMaterial({
+  color: 0x3a4d39,
+  roughness: 0.6
+});
+const bristleMesh = new THREE.Mesh(
+  boxGeo(0.044, 0.048, 0.016),
+  bristleMat
+);
+bristleMesh.position.y = 0.024;
+brush3D.add(bristleMesh);
+
+brush3D.rotation.z = -0.45;
+brush3D.rotation.x = 0.35;
+scene.add(brush3D);
+
+let brushSweepTimer = 0;
+const paintSplashes = [];
+
+function spawnPaintSplash(point, hexColor) {
+  const splashMat = new THREE.MeshBasicMaterial({ color: hexColor });
+  for (let i = 0; i < 8; i++) {
+    const drop = new THREE.Mesh(new THREE.SphereGeometry(0.012, 8, 8), splashMat);
+    drop.position.copy(point);
+    const vel = new THREE.Vector3(
+      (Math.random() - 0.5) * 0.9,
+      0.25 + Math.random() * 0.65,
+      (Math.random() - 0.5) * 0.9
     );
-}
-
-.ambient-glow {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 253, 249, 0.45) 0%,
-    rgba(255, 253, 249, 0.15) 45%,
-    rgba(255, 253, 249, 0.75) 100%
-  );
+    scene.add(drop);
+    paintSplashes.push({ mesh: drop, vel, life: 0.45 });
+  }
 }
 
 /* ==========================================================================
-   TIPOGRAFIA & BOTÕES PÍLULA
+   5. CONSTRUTORES PROCEDURAIS DE MÓVEIS + REGISTRO DE PEÇAS E MEDIDAS
    ========================================================================== */
-h1, h2, h3, .brand-name {
-  font-family: 'Plus Jakarta Sans', 'DM Sans', sans-serif;
-  letter-spacing: -0.025em;
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  border: none;
-  border-radius: var(--radius-pill);
-  padding: 0.72rem 1.45rem;
-  font-family: inherit;
-  font-size: 0.92rem;
-  font-weight: 600;
-  text-decoration: none;
-  cursor: pointer;
-  transition: transform var(--transition), background-color var(--transition), box-shadow var(--transition);
-}
-
-.btn:hover {
-  transform: translateY(-2px);
-}
-
-.btn:active {
-  transform: translateY(0);
-}
-
-.btn-lg {
-  padding: 0.88rem 1.65rem;
-  font-size: 0.95rem;
-}
-
-.btn-block {
-  width: 100%;
-}
-
-.btn-sage {
-  background-color: var(--sage);
-  color: var(--espresso-deep);
-  box-shadow: 0 10px 26px rgba(61, 82, 69, 0.22);
-}
-
-.btn-sage:hover {
-  background-color: var(--sage-hover);
-  box-shadow: 0 14px 32px rgba(61, 82, 69, 0.32);
-}
-
-.btn-glass {
-  background: rgba(74, 53, 37, 0.1);
-  color: var(--oat);
-  border: 1px solid var(--border-light);
-  backdrop-filter: blur(12px);
-}
-
-.btn-glass:hover {
-  background: rgba(74, 53, 37, 0.18);
-}
-
-.meta-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.35rem 0.85rem;
-  border-radius: var(--radius-pill);
-  background: rgba(74, 53, 37, 0.09);
-  border: 1px solid var(--border-light);
-  color: var(--oat-muted);
-  font-size: 0.8rem;
-  font-weight: 500;
-  backdrop-filter: blur(10px);
-}
-
-.dot {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background-color: var(--sage);
-}
-
-/* ==========================================================================
-   HEADER / TOPBAR
-   ========================================================================== */
-.topbar {
-  max-width: 1320px;
-  margin: 0 auto;
-  padding: 1.25rem 2rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  position: sticky;
-  top: 0;
-  z-index: 50;
-}
-
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.65rem;
-  color: var(--oat);
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 1.05rem;
-}
-
-.brand-mark {
-  width: 24px;
-  height: 24px;
-  border-radius: 7px;
-  border: 2px solid var(--oat);
-  position: relative;
-  display: inline-block;
-}
-
-.brand-mark::after {
-  content: "";
-  position: absolute;
-  inset: 4px;
-  border-radius: 3px;
-  background: var(--sage);
-}
-
-.nav-pill {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.35rem;
-  border-radius: var(--radius-pill);
-  background: rgba(255, 253, 249, 0.72);
-  border: 1px solid var(--border-light);
-  backdrop-filter: blur(16px);
-}
-
-.nav-link {
-  color: var(--oat-muted);
-  text-decoration: none;
-  font-size: 0.88rem;
-  font-weight: 500;
-  padding: 0.48rem 1.05rem;
-  border-radius: var(--radius-pill);
-  transition: all var(--transition);
-}
-
-.nav-link:hover,
-.nav-link.active {
-  color: var(--oat);
-  background: rgba(74, 53, 37, 0.13);
-}
-
-.topbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.menu-toggle {
-  display: none;
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  border: 1px solid var(--border-light);
-  background: rgba(255, 253, 249, 0.72);
-  color: var(--oat);
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  cursor: pointer;
-}
-
-.menu-toggle span {
-  width: 16px;
-  height: 1.5px;
-  background: var(--oat);
-  border-radius: 2px;
-}
-
-.mobile-drawer {
-  display: none;
-  position: fixed;
-  inset: 76px 1.25rem auto 1.25rem;
-  z-index: 60;
-  padding: 1.25rem;
-  border-radius: var(--radius-lg);
-  background: rgba(255, 253, 249, 0.96);
-  border: 1px solid var(--border-light);
-  backdrop-filter: blur(20px);
-  flex-direction: column;
-  gap: 0.85rem;
-}
-
-.mobile-drawer.open {
-  display: flex;
-}
-
-.mobile-link {
-  color: var(--oat);
-  text-decoration: none;
-  font-size: 1rem;
-  padding: 0.5rem 0.25rem;
-  border-bottom: 1px solid rgba(74, 53, 37, 0.08);
-}
-
-/* ==========================================================================
-   HERO & CRIADOR SOB MEDIDA
-   ========================================================================== */
-.hero-section {
-  max-width: 1320px;
-  margin: 0 auto;
-  padding: 1.25rem 2rem 4.5rem;
-}
-
-.hero-grid {
-  display: grid;
-  grid-template-columns: 1.02fr 1.18fr;
-  gap: 2.35rem;
-  align-items: start;
-}
-
-.badges-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  margin-bottom: 1.1rem;
-}
-
-.hero-title {
-  font-size: clamp(2.15rem, 4vw, 3.7rem);
-  font-weight: 500;
-  line-height: 1.07;
-  color: var(--oat);
-  margin-bottom: 1rem;
-}
-
-.hero-subtitle {
-  font-size: 0.98rem;
-  color: var(--oat-muted);
-  max-width: 500px;
-  margin-bottom: 1.5rem;
-}
-
-/* Caixa Interativa: O que você quer criar? */
-.creator-box {
-  background: var(--glass-card);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-xl);
-  padding: 1.35rem;
-  backdrop-filter: blur(18px);
-  box-shadow: 0 22px 48px rgba(74, 53, 37, 0.2);
-}
-
-.creator-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 0.7rem;
-}
-
-.creator-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  font-size: 0.96rem;
-  font-weight: 600;
-  color: var(--oat);
-}
-
-.creator-badge {
-  font-size: 0.74rem;
-  color: var(--sage);
-  background: rgba(61, 82, 69, 0.14);
-  border: 1px solid rgba(61, 82, 69, 0.3);
-  padding: 0.22rem 0.65rem;
-  border-radius: var(--radius-pill);
-}
-
-.creator-box textarea {
-  width: 100%;
-  resize: none;
-  padding: 0.85rem 1rem;
-  border-radius: 16px;
-  border: 1px solid var(--border-light);
-  background: rgba(74, 53, 37, 0.08);
-  color: var(--oat);
-  font-family: inherit;
-  font-size: 0.94rem;
-  line-height: 1.45;
-  outline: none;
-  transition: border-color var(--transition), background var(--transition);
-}
-
-.creator-box textarea::placeholder {
-  color: rgba(74, 53, 37, 0.48);
-}
-
-.creator-box textarea:focus {
-  border-color: var(--sage);
-  background: rgba(74, 53, 37, 0.12);
-}
-
-.quick-ideas {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.42rem;
-  margin-top: 0.7rem;
-}
-
-.idea-chip {
-  padding: 0.36rem 0.78rem;
-  border-radius: var(--radius-pill);
-  border: 1px solid rgba(74, 53, 37, 0.14);
-  background: rgba(74, 53, 37, 0.06);
-  color: var(--oat-muted);
-  font-family: inherit;
-  font-size: 0.78rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition);
-}
-
-.idea-chip:hover {
-  color: var(--espresso-deep);
-  background: var(--oat);
-  border-color: var(--oat);
-}
-
-.dimensions-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.6rem;
-  margin-top: 0.85rem;
-}
-
-.dim-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.dim-field label {
-  font-size: 0.72rem;
-  color: var(--oat-muted);
-}
-
-.dim-field input {
-  width: 100%;
-  padding: 0.55rem 0.75rem;
-  border-radius: 12px;
-  border: 1px solid var(--border-light);
-  background: rgba(74, 53, 37, 0.06);
-  color: var(--oat);
-  font-family: inherit;
-  font-size: 0.88rem;
-  outline: none;
-  transition: border-color var(--transition);
-}
-
-.dim-field input::placeholder {
-  color: rgba(74, 53, 37, 0.4);
-}
-
-.dim-field input:focus {
-  border-color: var(--sage);
-}
-
-.creator-actions {
-  display: flex;
-  gap: 0.65rem;
-  margin-top: 0.95rem;
-}
-
-.creator-submit {
-  flex: 1;
-}
-
-.generated-specs {
-  margin-top: 0.85rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid rgba(74, 53, 37, 0.1);
-  font-size: 0.8rem;
-  color: var(--oat-muted);
-}
-
-.generated-specs strong {
-  color: var(--sage);
-}
-
-/* ==========================================================================
-   ABAS: MODO PINTOR & MODO DETALHADO (cm / m)
-   ========================================================================== */
-.mode-tabs-bar {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.65rem;
-  margin-bottom: 0.75rem;
-}
-
-.mode-tab-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.55rem;
-  padding: 0.72rem 1rem;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--border-light);
-  background: rgba(255, 253, 249, 0.78);
-  color: var(--oat);
-  font-family: inherit;
-  font-size: 0.86rem;
-  font-weight: 600;
-  cursor: pointer;
-  backdrop-filter: blur(14px);
-  transition: all var(--transition);
-}
-
-.mode-tab-btn:hover {
-  border-color: rgba(74, 53, 37, 0.35);
-  background: rgba(255, 253, 249, 0.85);
-}
-
-.mode-tab-btn.active {
-  background: var(--sage);
-  color: var(--espresso-deep);
-  border-color: var(--sage);
-  box-shadow: 0 10px 24px rgba(61, 82, 69, 0.28);
-}
-
-/* Gaveta do Modo Pintor */
-.painter-drawer,
-.detail-drawer {
-  margin-bottom: 0.8rem;
-  padding: 0.95rem 1.1rem;
-  border-radius: var(--radius-lg);
-  background: var(--glass-card);
-  border: 1px solid rgba(61, 82, 69, 0.35);
-  backdrop-filter: blur(18px);
-  box-shadow: 0 16px 36px rgba(74, 53, 37, 0.19);
-}
-
-.painter-top-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-}
-
-.bucket-indicator {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-}
-
-.bucket-icon {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
-  background: #2F4036;
-  color: #F7F5F0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid rgba(74, 53, 37, 0.45);
-  box-shadow: 0 6px 16px rgba(74, 53, 37, 0.16);
-  transition: background-color var(--transition), color var(--transition);
-}
-
-.bucket-indicator small {
-  display: block;
-  font-size: 0.7rem;
-  color: var(--oat-muted);
-}
-
-.bucket-indicator strong {
-  font-size: 0.86rem;
-  color: var(--oat);
-}
-
-.painter-tools {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-}
-
-.tool-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.4rem 0.78rem;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--border-light);
-  background: rgba(74, 53, 37, 0.08);
-  color: var(--oat);
-  font-family: inherit;
-  font-size: 0.76rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition);
-}
-
-.tool-pill:hover {
-  background: rgba(74, 53, 37, 0.18);
-}
-
-.tool-pill.active {
-  background: var(--oat);
-  color: var(--espresso-deep);
-  border-color: var(--oat);
-  font-weight: 600;
-}
-
-.paint-buckets-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.bucket-swatch-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.42rem;
-  padding: 0.34rem 0.72rem 0.34rem 0.4rem;
-  border-radius: var(--radius-pill);
-  border: 1px solid rgba(74, 53, 37, 0.16);
-  background: rgba(74, 53, 37, 0.06);
-  color: var(--oat);
-  font-family: inherit;
-  font-size: 0.75rem;
-  cursor: pointer;
-  transition: all var(--transition);
-}
-
-.bucket-swatch-btn:hover {
-  border-color: rgba(74, 53, 37, 0.45);
-  transform: translateY(-1px);
-}
-
-.bucket-swatch-btn.active {
-  border-color: var(--sage);
-  background: rgba(61, 82, 69, 0.2);
-  font-weight: 600;
-}
-
-.bucket-color-dot {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(255, 255, 255, 0.45);
-  flex-shrink: 0;
-}
-
-.painter-footer-note {
-  margin-top: 0.65rem;
-  font-size: 0.76rem;
-  color: var(--oat-muted);
-}
-
-/* Gaveta do Modo Detalhado */
-.detail-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  font-size: 0.8rem;
-  margin-bottom: 0.65rem;
-}
-
-.detail-header span:first-child {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  font-weight: 600;
-  color: var(--oat);
-}
-
-.detail-total-badge {
-  font-size: 0.75rem;
-  color: var(--espresso-deep);
-  background: var(--sage);
-  padding: 0.24rem 0.7rem;
-  border-radius: var(--radius-pill);
-  font-weight: 600;
-}
-
-.detail-parts-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
-  gap: 0.45rem;
-  max-height: 120px;
-  overflow-y: auto;
-  padding-right: 0.2rem;
-}
-
-.detail-part-item {
-  padding: 0.42rem 0.65rem;
-  border-radius: 10px;
-  background: rgba(74, 53, 37, 0.06);
-  border: 1px solid rgba(74, 53, 37, 0.1);
-  font-size: 0.73rem;
-}
-
-.detail-part-item strong {
-  display: block;
-  color: var(--oat);
-  font-weight: 600;
-}
-
-.detail-part-item span {
-  color: var(--sage);
-}
-
-/* ==========================================================================
-   PALCO 3D DE MONTAGEM
-   ========================================================================== */
-.stage-card {
-  position: relative;
-  height: 620px;
-  border-radius: var(--radius-xl);
-  overflow: hidden;
-  border: 1px solid var(--border-light);
-  background: radial-gradient(circle at 50% 38%, #ffffff 0%, #F1EBDF 62%, #E3D8C6 100%);
-  box-shadow: 0 30px 70px rgba(74, 53, 37, 0.25);
-}
-
-.stage-viewport {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.canvas-container {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  cursor: grab;
-  touch-action: none;
-}
-
-.canvas-container:active {
-  cursor: grabbing;
-}
-
-.canvas-container.painter-cursor {
-  cursor: crosshair;
-}
-
-.stage-top-tag {
-  position: absolute;
-  top: 1.1rem;
-  right: 1.1rem;
-  z-index: 12;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.42rem 0.9rem;
-  border-radius: var(--radius-pill);
-  background: rgba(255, 253, 249, 0.76);
-  border: 1px solid var(--border-light);
-  backdrop-filter: blur(12px);
-  font-size: 0.78rem;
-  color: var(--oat);
-  pointer-events: none;
-}
-
-.stage-hint {
-  position: absolute;
-  top: 1.15rem;
-  left: 1.15rem;
-  z-index: 12;
-  font-size: 0.75rem;
-  color: var(--oat-muted);
-  background: rgba(255, 253, 249, 0.62);
-  padding: 0.35rem 0.75rem;
-  border-radius: var(--radius-pill);
-  backdrop-filter: blur(8px);
-  pointer-events: none;
-}
-
-/* Tooltip flutuante ao passar o pincel */
-.painter-hover-tag {
-  position: absolute;
-  z-index: 15;
-  pointer-events: none;
-  padding: 0.35rem 0.75rem;
-  border-radius: var(--radius-pill);
-  background: rgba(255, 253, 249, 0.9);
-  border: 1px solid var(--sage);
-  color: var(--oat);
-  font-size: 0.74rem;
-  font-weight: 500;
-  white-space: nowrap;
-  transform: translate(-50%, -135%);
-  box-shadow: 0 8px 20px rgba(74, 53, 37, 0.2);
-}
-
-/* Etiquetas flutuantes 3D do Modo Detalhado (cm e m) */
-.dimension-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 11;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.dim-callout {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  padding: 0.24rem 0.58rem;
-  border-radius: 8px;
-  background: rgba(255, 253, 249, 0.88);
-  border: 1px solid rgba(74, 53, 37, 0.3);
-  color: var(--oat);
-  font-size: 0.69rem;
-  line-height: 1.25;
-  white-space: nowrap;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 6px 16px rgba(74, 53, 37, 0.18);
-}
-
-.dim-callout.overall {
-  background: var(--sage);
-  color: var(--espresso-deep);
-  border-color: var(--oat);
-  font-weight: 700;
-  font-size: 0.73rem;
-}
-
-.dim-callout small {
-  display: block;
-  color: var(--sage);
-  font-weight: 600;
-}
-
-.stage-controls-panel {
-  position: absolute;
-  left: 1.15rem;
-  right: 1.15rem;
-  bottom: 1.15rem;
-  z-index: 12;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  pointer-events: none;
-}
-
-.assembly-bar {
-  pointer-events: auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.55rem 0.85rem;
-  border-radius: var(--radius-pill);
-  background: rgba(255, 253, 249, 0.78);
-  border: 1px solid var(--border-light);
-  backdrop-filter: blur(14px);
-}
-
-.icon-action-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  background: rgba(74, 53, 37, 0.08);
-  border: 1px solid rgba(74, 53, 37, 0.14);
-  color: var(--oat);
-  padding: 0.42rem 0.85rem;
-  border-radius: var(--radius-pill);
-  font-family: inherit;
-  font-size: 0.78rem;
-  font-weight: 500;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background var(--transition);
-}
-
-.icon-action-btn:hover {
-  background: rgba(74, 53, 37, 0.18);
-}
-
-.slider-group {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  flex: 1;
-  max-width: 210px;
-}
-
-.slider-group label {
-  font-size: 0.76rem;
-  color: var(--oat-muted);
-}
-
-.slider-group input[type="range"] {
-  width: 100%;
-  accent-color: var(--sage);
-  cursor: pointer;
-  height: 4px;
-}
-
-.floating-cards {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 0.9rem;
-  pointer-events: none;
-}
-
-.glass-subcard {
-  pointer-events: auto;
-  background: var(--glass-card);
-  border: 1px solid var(--border-light);
-  backdrop-filter: blur(18px);
-  border-radius: var(--radius-lg);
-  padding: 0.95rem 1.05rem;
-  box-shadow: 0 16px 36px rgba(74, 53, 37, 0.2);
-}
-
-.steps-card {
-  flex: 1;
-  max-width: 315px;
-}
-
-.subcard-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 0.75rem;
-  color: var(--oat);
-  margin-bottom: 0.65rem;
-}
-
-.subcard-header span:first-child {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.subcard-header .muted {
-  color: var(--sage);
-  font-weight: 500;
-}
-
-.steps-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
-  margin-bottom: 0.65rem;
-}
-
-.step-chip {
-  text-align: left;
-  padding: 0.48rem 0.68rem;
-  border-radius: 12px;
-  border: 1px solid rgba(74, 53, 37, 0.12);
-  background: rgba(74, 53, 37, 0.06);
-  color: var(--oat);
-  font-family: inherit;
-  cursor: pointer;
-  transition: all var(--transition);
-}
-
-.step-chip small {
-  display: block;
-  font-size: 0.68rem;
-  color: var(--oat-muted);
-}
-
-.step-chip strong {
-  font-size: 0.82rem;
-  font-weight: 600;
-}
-
-.step-chip.active,
-.step-chip:hover {
-  border-color: var(--sage);
-  background: rgba(61, 82, 69, 0.16);
-}
-
-.steps-card .btn-sage {
-  padding: 0.55rem 1rem;
-  font-size: 0.82rem;
-}
-
-.swatch-card {
-  text-align: center;
-  padding: 0.85rem 1rem;
-}
-
-.swatch-title {
-  display: block;
-  font-size: 0.74rem;
-  color: var(--oat-muted);
-  margin-bottom: 0.55rem;
-}
-
-.swatch-row {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-}
-
-.swatch-btn {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background-color: var(--swatch-color);
-  border: 2px solid rgba(74, 53, 37, 0.35);
-  cursor: pointer;
-  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
-}
-
-.swatch-btn:hover {
-  transform: scale(1.1);
-}
-
-.swatch-btn.active {
-  border-color: var(--oat);
-  box-shadow: 0 0 0 3px rgba(61, 82, 69, 0.55);
-  transform: scale(1.08);
-}
-
-/* ==========================================================================
-   SEÇÃO: OFÍCIO DA MARCENARIA
-   ========================================================================== */
-.craft-section,
-.works-section,
-.contact-section {
-  max-width: 1320px;
-  margin: 0 auto;
-  padding: 4.5rem 2rem;
-}
-
-.section-header {
-  max-width: 640px;
-  margin-bottom: 2.75rem;
-}
-
-.section-header h2 {
-  font-size: clamp(1.9rem, 3.2vw, 2.75rem);
-  font-weight: 500;
-  line-height: 1.15;
-  margin-top: 0.9rem;
-  color: var(--oat);
-}
-
-.craft-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
-}
-
-.craft-card {
-  padding: 2rem;
-  border-radius: var(--radius-xl);
-  background: var(--glass-bg);
-  border: 1px solid var(--border-light);
-  backdrop-filter: blur(14px);
-  transition: transform var(--transition), border-color var(--transition);
-}
-
-.craft-card:hover {
-  transform: translateY(-5px);
-  border-color: rgba(61, 82, 69, 0.45);
-}
-
-.craft-number {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: rgba(61, 82, 69, 0.16);
-  color: var(--sage);
-  font-weight: 600;
-  font-size: 0.88rem;
-  margin-bottom: 1.35rem;
-}
-
-.craft-card h3 {
-  font-size: 1.25rem;
-  font-weight: 500;
-  margin-bottom: 0.7rem;
-  color: var(--oat);
-}
-
-.craft-card p {
-  font-size: 0.95rem;
-  color: var(--oat-muted);
-}
-
-/* ==========================================================================
-   SEÇÃO: PROJETOS EXECUTADOS
-   ========================================================================== */
-.works-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
-}
-
-.work-card {
-  border-radius: var(--radius-xl);
-  overflow: hidden;
-  background: var(--glass-bg);
-  border: 1px solid var(--border-light);
-  backdrop-filter: blur(14px);
-  display: flex;
-  flex-direction: column;
-  transition: transform var(--transition), border-color var(--transition);
-  cursor: pointer;
-}
-
-.work-card:hover {
-  transform: translateY(-6px);
-  border-color: rgba(74, 53, 37, 0.35);
-}
-
-.work-media {
-  height: 235px;
-  position: relative;
-  overflow: hidden;
-  background: var(--espresso-deep);
-}
-
-.work-media img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.6s ease;
-}
-
-.work-card:hover .work-media img {
-  transform: scale(1.05);
-}
-
-.work-fallback {
-  display: none;
-  width: 100%;
-  height: 100%;
-  align-items: flex-end;
-  padding: 1.35rem;
-  font-weight: 600;
-  font-size: 1rem;
-  color: var(--oat);
-}
-
-.wood-pattern-1 {
-  background: linear-gradient(145deg, #5C3D2B 0%, #2B1D16 100%);
-}
-
-.wood-pattern-2 {
-  background:
-    linear-gradient(180deg, rgba(200, 109, 81, 0.38) 0%, transparent 32%),
-    repeating-linear-gradient(90deg, #6A4631 0px, #4A3021 10px, #2B1D16 14px);
-}
-
-.wood-pattern-3 {
-  background: linear-gradient(145deg, #4B3528 0%, #8C9E7B 180%);
-}
-
-.work-body {
-  padding: 1.65rem;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-}
-
-.work-meta {
-  font-size: 0.78rem;
-  color: var(--sage);
-  font-weight: 500;
-  margin-bottom: 0.45rem;
-}
-
-.work-body h3 {
-  font-size: 1.22rem;
-  font-weight: 500;
-  margin-bottom: 0.6rem;
-}
-
-.work-body p {
-  font-size: 0.92rem;
-  color: var(--oat-muted);
-  margin-bottom: 1.25rem;
-  flex: 1;
-}
-
-.text-action {
-  background: none;
-  border: none;
-  padding: 0;
-  color: var(--oat);
-  font-family: inherit;
-  font-size: 0.88rem;
-  font-weight: 600;
-  text-align: left;
-  cursor: pointer;
-  transition: color var(--transition);
-}
-
-.work-card:hover .text-action {
-  color: var(--sage);
-}
-
-/* ==========================================================================
-   SEÇÃO: CONTATO & ORÇAMENTO
-   ========================================================================== */
-.contact-card {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 3rem;
-  padding: 3rem;
-  border-radius: var(--radius-xl);
-  background: rgba(255, 253, 249, 0.78);
-  border: 1px solid var(--border-light);
-  backdrop-filter: blur(18px);
-}
-
-.contact-info h2 {
-  font-size: clamp(1.85rem, 3vw, 2.55rem);
-  font-weight: 500;
-  line-height: 1.15;
-  margin: 1rem 0;
-}
-
-.contact-info p {
-  color: var(--oat-muted);
-  margin-bottom: 2rem;
-}
-
-.palette-legend {
-  display: flex;
-  flex-direction: column;
-  gap: 0.95rem;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-}
-
-.swatch-dot {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 1px solid rgba(74, 53, 37, 0.35);
-  flex-shrink: 0;
-}
-
-.legend-item strong {
-  display: block;
-  font-size: 0.92rem;
-  color: var(--oat);
-}
-
-.legend-item small {
-  color: var(--oat-muted);
-  font-size: 0.8rem;
-}
-
-.contact-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.1rem;
-}
-
-.field-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.field-group label {
-  font-size: 0.84rem;
-  color: var(--oat-muted);
-}
-
-.field-group input,
-.field-group select,
-.field-group textarea {
-  width: 100%;
-  padding: 0.82rem 1rem;
-  border-radius: 14px;
-  border: 1px solid var(--border-light);
-  background: rgba(74, 53, 37, 0.07);
-  color: var(--oat);
-  font-family: inherit;
-  font-size: 0.94rem;
-  outline: none;
-  transition: border-color var(--transition), background var(--transition);
-}
-
-.field-group select option {
-  background: var(--espresso-deep);
-  color: var(--oat);
-}
-
-.field-group input:focus,
-.field-group select:focus,
-.field-group textarea:focus {
-  border-color: var(--sage);
-  background: rgba(74, 53, 37, 0.11);
-}
-
-.form-feedback {
-  font-size: 0.88rem;
-  color: var(--sage);
-  min-height: 1.2rem;
-}
-
-/* ==========================================================================
-   FOOTER & REVEAL ANIMATIONS
-   ========================================================================== */
-.site-footer {
-  border-top: 1px solid var(--border-light);
-  margin-top: 2rem;
-  padding: 2.2rem 2rem;
-}
-
-.footer-inner {
-  max-width: 1320px;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 1rem;
-  color: var(--oat-muted);
-  font-size: 0.88rem;
-}
-
-.reveal-up {
-  opacity: 0;
-  transform: translateY(22px);
-  transition: opacity 0.75s ease, transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.reveal-up.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.delay-1 {
-  transition-delay: 0.12s;
-}
-
-.delay-2 {
-  transition-delay: 0.24s;
-}
-
-/* ==========================================================================
-   RESPONSIVIDADE (DESKTOP, TABLET & CELULAR)
-   ========================================================================== */
-@media (max-width: 1024px) {
-  .hero-grid,
-  .contact-card {
-    grid-template-columns: 1fr;
+const furnitureRoot = new THREE.Group();
+scene.add(furnitureRoot);
+
+let animatedParts = [];
+let paintableParts = [];
+let interactiveOpenables = [];
+let dimensionLinesGroup = new THREE.Group();
+scene.add(dimensionLinesGroup);
+
+let ledLight = null;
+let doorsOpen = false;
+let hasLedFeature = false;
+let currentSpec = null;
+
+function formatCmAndM(cmVal) {
+  const cmRounded = Math.round(cmVal * 10) / 10;
+  const mStr = (cmRounded / 100).toFixed(2).replace('.', ',');
+  const cmStr = Number.isInteger(cmRounded) ? `${cmRounded}` : cmRounded.toFixed(1).replace('.', ',');
+  return `${cmStr} cm (${mStr} m)`;
+}
+
+function formatDimsShort(dimsCm) {
+  const f = (n) => (Number.isInteger(Math.round(n * 10) / 10) ? Math.round(n) : (Math.round(n * 10) / 10).toFixed(1).replace('.', ','));
+  return `${f(dimsCm.w)} × ${f(dimsCm.h)} × ${f(dimsCm.d)} cm`;
+}
+
+function registerPart(obj, explodeOffset, meta = {}) {
+  const partInfo = {
+    id: `part_${animatedParts.length + 1}`,
+    obj,
+    name: meta.name || `Peça ${animatedParts.length + 1}`,
+    dimsCm: meta.dimsCm || null,
+    paintable: meta.paintable !== false,
+    paintedColorName: null,
+    targetPos: obj.position.clone(),
+    explodeOffset: new THREE.Vector3(explodeOffset.x, explodeOffset.y, explodeOffset.z),
+    targetRot: obj.rotation.clone(),
+    explodeRot: meta.explodeRot || { x: 0, y: 0, z: 0 },
+    openable: null,
+    calloutEl: null
+  };
+
+  obj.traverse((child) => {
+    if (child.isMesh) {
+      child.castShadow = true;
+      child.receiveShadow = true;
+      if (partInfo.paintable && !child.userData.nonPaintable) {
+        child.userData.partRef = partInfo;
+      }
+    }
+  });
+
+  animatedParts.push(partInfo);
+  if (partInfo.paintable) {
+    paintableParts.push(partInfo);
+  }
+  furnitureRoot.add(obj);
+  return partInfo;
+}
+
+function registerOpenable(partInfo, config) {
+  const openableData = {
+    partInfo,
+    obj: partInfo.obj,
+    closedOffset: new THREE.Vector3(0, 0, 0),
+    openOffset: config.openOffset || new THREE.Vector3(0, 0, 0),
+    closedRotY: 0,
+    openRotY: config.openRotY || 0,
+    openRotX: config.openRotX || 0,
+    currentProgress: 0,
+    targetProgress: 0
+  };
+  partInfo.openable = openableData;
+
+  partInfo.obj.traverse((child) => {
+    if (child.isMesh) {
+      child.userData.openableRef = openableData;
+    }
+  });
+
+  interactiveOpenables.push(openableData);
+}
+
+function clearFurniture() {
+  while (furnitureRoot.children.length > 0) {
+    furnitureRoot.remove(furnitureRoot.children[0]);
+  }
+  partMaterials.forEach((m) => {
+    if (m.map) m.map.dispose();
+    if (m.bumpMap) m.bumpMap.dispose();
+    m.dispose();
+  });
+  partMaterials.length = 0;
+
+  animatedParts = [];
+  paintableParts = [];
+  interactiveOpenables = [];
+  ledLight = null;
+  hasLedFeature = false;
+  ledStripMat.emissiveIntensity = 0;
+
+  const dimOverlay = document.getElementById('dimensionOverlay');
+  if (dimOverlay) dimOverlay.innerHTML = '';
+  clearDimensionLines3D();
+}
+
+function parseFurnitureRequest(rawText, manualDims) {
+  const text = (rawText || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  let category = 'armario_pia';
+  let displayTitle = 'Armário de Pia';
+
+  if (text.includes('guarda-roupa') || text.includes('guarda roupa') || text.includes('roupeiro') || text.includes('closet')) {
+    category = 'guarda_roupa';
+    displayTitle = 'Guarda-Roupa Sob Medida';
+  } else if (text.includes('cozinha') || text.includes('aereo') || text.includes('bancada')) {
+    category = 'armario_cozinha';
+    displayTitle = 'Armário de Cozinha';
+  } else if (text.includes('pia') || text.includes('tanque') || text.includes('banheiro') || text.includes('lavabo') || text.includes('gabinete')) {
+    category = 'armario_pia';
+    displayTitle = 'Armário de Pia';
+  } else if (text.includes('ripado') || text.includes('balcao') || text.includes('recepcao') || text.includes('aparador')) {
+    category = 'balcao_ripado';
+    displayTitle = 'Balcão Ripado LED';
+  } else if (text.includes('estante') || text.includes('nicho') || text.includes('livreiro') || text.includes('prateleira')) {
+    category = 'estante';
+    displayTitle = 'Estante & Nichos';
+  } else if (text.includes('armario') || text.includes('multiuso') || text.includes('dispensa') || text.includes('sapateira')) {
+    category = 'armario';
+    displayTitle = 'Armário Multiuso';
   }
 
-  .craft-grid,
-  .works-grid {
-    grid-template-columns: 1fr;
+  const custom = detectCustom(text);
+  if (custom) { category = custom.category; displayTitle = custom.title; }
+
+  const defaults = {
+    armario_pia:     { w: 120, h: 85,  d: 56 },
+    guarda_roupa:    { w: 185, h: 215, d: 58 },
+    armario_cozinha: { w: 200, h: 210, d: 56 },
+    balcao_ripado:   { w: 175, h: 94,  d: 56 },
+    estante:         { w: 135, h: 185, d: 38 },
+    armario:         { w: 110, h: 165, d: 48 }
+  };
+
+  let { w, h, d } = custom ? custom.dims : defaults[category];
+  let isAutoImagined = true;
+
+  const nxmMatch = text.match(/(\d+[.,]?\d*)\s*(?:m|cm)?\s*[x×]\s*(\d+[.,]?\d*)/);
+  if (nxmMatch) {
+    let v1 = parseFloat(nxmMatch[1].replace(',', '.'));
+    let v2 = parseFloat(nxmMatch[2].replace(',', '.'));
+    if (v1 <= 10) v1 = Math.round(v1 * 100);
+    if (v2 <= 10) v2 = Math.round(v2 * 100);
+    w = THREE.MathUtils.clamp(v1, 50, 420);
+    h = THREE.MathUtils.clamp(v2, 50, 290);
+    isAutoImagined = false;
+  } else {
+    const unitMatches = [...text.matchAll(/(\d+[.,]?\d*)\s*(cm|m|metro|metros)\b/g)];
+    if (unitMatches.length >= 1) {
+      let val1 = parseFloat(unitMatches[0][1].replace(',', '.'));
+      if (unitMatches[0][2] !== 'cm') val1 = Math.round(val1 * 100);
+      w = THREE.MathUtils.clamp(val1, 50, 420);
+      isAutoImagined = false;
+    }
+    if (unitMatches.length >= 2) {
+      let val2 = parseFloat(unitMatches[1][1].replace(',', '.'));
+      if (unitMatches[1][2] !== 'cm') val2 = Math.round(val2 * 100);
+      h = THREE.MathUtils.clamp(val2, 50, 290);
+    }
+  }
+
+  if (manualDims.w && manualDims.w >= 40) {
+    w = THREE.MathUtils.clamp(manualDims.w, 40, 450);
+    isAutoImagined = false;
+  }
+  if (manualDims.h && manualDims.h >= 40) {
+    h = THREE.MathUtils.clamp(manualDims.h, 40, 300);
+    isAutoImagined = false;
+  }
+  if (manualDims.d && manualDims.d >= 25) {
+    d = THREE.MathUtils.clamp(manualDims.d, 25, 120);
+    isAutoImagined = false;
+  }
+
+  const doorsMatch = text.match(/(\d+)\s*portas?/);
+  let doorCount = doorsMatch
+    ? THREE.MathUtils.clamp(parseInt(doorsMatch[1], 10), 1, 6)
+    : Math.max(2, Math.min(6, Math.round(w / 48)));
+
+  const hasDrawers =
+    text.includes('gaveta') ||
+    category === 'guarda_roupa' ||
+    category === 'armario_cozinha' ||
+    (category === 'armario_pia' && w >= 120);
+
+  const known = Boolean(custom) || /guarda|roupeiro|closet|cozinha|aereo|bancada|pia|tanque|banheiro|lavabo|gabinete|ripado|balcao|recepcao|aparador|estante|nicho|armario|multiuso|dispensa|sapateira/.test(text);
+  const opts = {
+    led: /\bled\b|iluminacao|luz/.test(text) ? (/frio|branc/.test(text) ? 'frio' : /neutro/.test(text) ? 'neutro' : 'quente') : 'quente',
+    divider: /divisoria/.test(text) ? Math.min(4, parseInt((text.match(/(\d+)\s*divisoria/) || [0, 1])[1], 10) || 1) : 0,
+    backShelves: /prat\w*leira/.test(text) && /(atras|fundo|traseir)/.test(text) ? Math.min(6, parseInt((text.match(/(\d+)\s*prat\w*leira/) || [0, 3])[1], 10) || 3) : 0
+  };
+  const hasShelf = !text.includes('sem prateleira');
+
+  let suggestedFinish = null;
+  if (text.includes('claro') || text.includes('branco') || text.includes('aveia') || text.includes('oat') || text.includes('freijo')) {
+    suggestedFinish = 'oat';
+  } else if (text.includes('verde') || text.includes('salvia') || text.includes('sage')) {
+    suggestedFinish = 'sage';
+  } else if (text.includes('escuro') || text.includes('nogueira') || text.includes('espresso')) {
+    suggestedFinish = 'espresso';
+  }
+
+  return {
+    category,
+    displayTitle,
+    wCm: Math.round(w),
+    hCm: Math.round(h),
+    dCm: Math.round(d),
+    doorCount,
+    hasDrawers,
+    hasShelf,
+    isAutoImagined,
+    suggestedFinish,
+    kind: custom ? custom.kind : null,
+    levels: custom ? custom.levels : 0,
+    dna: custom && custom.dna ? custom.dna : null,
+    opts,
+    fallback: !known
+  };
+}
+
+function frameCameraToModel(widthUnits, heightUnits) {
+  const centerY = heightUnits * 0.5;
+  const maxDim = Math.max(widthUnits, heightUnits * 1.15);
+  const dist = THREE.MathUtils.clamp(maxDim * 1.78, 2.35, 5.6);
+
+  controls.target.set(0, centerY, 0);
+  camera.position.set(dist * 0.72, centerY + dist * 0.42, dist * 0.88);
+  controls.update();
+}
+
+/* CONSTRUTOR 1: ARMÁRIO DE PIA */
+function buildProceduralSinkCabinet(spec) {
+  clearFurniture();
+  const w = spec.wCm / 100;
+  const h = spec.hCm / 100;
+  const d = spec.dCm / 100;
+  const t = 0.022;
+  const plinthH = 0.08;
+  const boxH = h - plinthH - 0.036;
+
+  const plinthBox = new THREE.Mesh(boxGeo(w - 0.04, plinthH, d - 0.06), createPartWoodMaterial(true));
+  plinthBox.position.set(0, plinthH / 2, -0.015);
+  registerPart(plinthBox, { x: 0, y: -0.25, z: 0 }, { name: 'Rodapé Base', dimsCm: { w: spec.wCm - 4, h: 8, d: spec.dCm - 6 } });
+
+  const bottom = new THREE.Mesh(boxGeo(w, t, d), createPartWoodMaterial(true));
+  bottom.position.set(0, plinthH + t / 2, 0);
+  registerPart(bottom, { x: 0, y: -0.15, z: 0.25 }, { name: 'Base Inferior', dimsCm: { w: spec.wCm, h: 2.2, d: spec.dCm } });
+
+  const leftSide = new THREE.Mesh(boxGeo(t, boxH - t, d), createPartWoodMaterial(false));
+  leftSide.position.set(-w / 2 + t / 2, plinthH + boxH / 2 + t / 2, 0);
+  registerPart(leftSide, { x: -0.48, y: 0.1, z: 0 }, { name: 'Parede Lateral Esquerda', dimsCm: { w: 2.2, h: Math.round((boxH - t) * 100), d: spec.dCm } });
+
+  const rightSide = new THREE.Mesh(boxGeo(t, boxH - t, d), createPartWoodMaterial(false));
+  rightSide.position.set(w / 2 - t / 2, plinthH + boxH / 2 + t / 2, 0);
+  registerPart(rightSide, { x: 0.48, y: 0.1, z: 0 }, { name: 'Parede Lateral Direita', dimsCm: { w: 2.2, h: Math.round((boxH - t) * 100), d: spec.dCm } });
+
+  const frontRail = new THREE.Mesh(boxGeo(w - t * 2, 0.06, t), createPartWoodMaterial(true));
+  frontRail.position.set(0, plinthH + boxH - 0.03, d / 2 - t / 2);
+  registerPart(frontRail, { x: 0, y: 0.25, z: 0.35 }, { name: 'Travessa Frontal', dimsCm: { w: Math.round((w - t * 2) * 100), h: 6, d: 2.2 } });
+
+  const useSideDrawers = spec.hasDrawers && w >= 1.15;
+  const drawerColW = useSideDrawers ? Math.min(0.42, w * 0.34) : 0;
+  const doorsAreaW = w - t * 2 - (useSideDrawers ? drawerColW + t : 0);
+  const doorsCenterX = -w / 2 + t + doorsAreaW / 2;
+
+  if (useSideDrawers) {
+    const divX = -w / 2 + t + doorsAreaW + t / 2;
+    const divider = new THREE.Mesh(boxGeo(t, boxH - t, d - 0.03), createPartWoodMaterial(false));
+    divider.position.set(divX, plinthH + boxH / 2 + t / 2, -0.01);
+    registerPart(divider, { x: 0.12, y: 0.35, z: -0.2 }, { name: 'Divisória Interna', dimsCm: { w: 2.2, h: Math.round((boxH - t) * 100), d: spec.dCm - 3 } });
+
+    const drawerH = (boxH - t - 0.018) / 3;
+    const drawerCenterX = divX + t / 2 + drawerColW / 2;
+
+    for (let i = 0; i < 3; i++) {
+      const dg = new THREE.Group();
+      const dy = plinthH + t + drawerH * (i + 0.5) + i * 0.005;
+      dg.position.set(drawerCenterX, dy, d / 2 - t / 2);
+
+      const drawerMat = createPartWoodMaterial(false);
+      const front = new THREE.Mesh(boxGeo(drawerColW - 0.006, drawerH - 0.006, t), drawerMat);
+      dg.add(front);
+
+      const handle = new THREE.Mesh(boxGeo(0.11, 0.012, 0.02), chromeMat);
+      handle.position.set(0, drawerH * 0.25, 0.018);
+      handle.userData.nonPaintable = true;
+      dg.add(handle);
+
+      const inner = new THREE.Mesh(boxGeo(drawerColW - 0.04, drawerH * 0.65, d - 0.08), drawerMat);
+      inner.position.set(0, -0.01, -(d - 0.08) / 2);
+      dg.add(inner);
+
+      const pInfo = registerPart(dg, { x: 0.38, y: 0.05 * i, z: 0.55 + i * 0.1 }, {
+        name: `Gaveta ${3 - i}`,
+        dimsCm: { w: Math.round(drawerColW * 100), h: Math.round(drawerH * 100), d: spec.dCm - 8 }
+      });
+      registerOpenable(pInfo, { openOffset: new THREE.Vector3(0, 0, 0.24 - i * 0.045) });
+    }
+  }
+
+  if (spec.hasShelf) {
+    const shelf = new THREE.Mesh(boxGeo(doorsAreaW - 0.006, t, d - 0.08), createPartWoodMaterial(true));
+    shelf.position.set(doorsCenterX, plinthH + boxH * 0.46, -0.02);
+    registerPart(shelf, { x: -0.15, y: 0.12, z: 0.45 }, { name: 'Prateleira Interna', dimsCm: { w: Math.round(doorsAreaW * 100), h: 2.2, d: spec.dCm - 8 } });
+  }
+
+  const doorCount = useSideDrawers ? Math.min(2, spec.doorCount) : spec.doorCount;
+  const singleDoorW = (doorsAreaW - (doorCount - 1) * 0.005) / doorCount;
+  const doorH = boxH - 0.072;
+  const doorY = plinthH + t + doorH / 2;
+
+  for (let i = 0; i < doorCount; i++) {
+    const isLeftHinged = i % 2 === 0;
+    const slotX = (-w / 2 + t) + singleDoorW * (i + 0.5) + i * 0.005;
+    const pivot = new THREE.Group();
+    pivot.position.set(isLeftHinged ? slotX - singleDoorW / 2 : slotX + singleDoorW / 2, doorY, d / 2 - t / 2);
+
+    const panel = new THREE.Mesh(boxGeo(singleDoorW, doorH, t), createPartWoodMaterial(false));
+    panel.position.set(isLeftHinged ? singleDoorW / 2 : -singleDoorW / 2, 0, 0);
+    pivot.add(panel);
+
+    const knob = new THREE.Mesh(boxGeo(0.014, 0.11, 0.02), chromeMat);
+    knob.position.set(isLeftHinged ? singleDoorW - 0.032 : -singleDoorW + 0.032, doorH * 0.28, 0.018);
+    knob.userData.nonPaintable = true;
+    pivot.add(knob);
+
+    const doorLabel = doorCount === 2 ? (i === 0 ? 'Porta Esquerda' : 'Porta Direita') : `Porta ${i + 1}`;
+    const pInfo = registerPart(pivot, { x: (i - doorCount / 2) * 0.24, y: 0, z: 0.68 }, {
+      name: doorLabel,
+      dimsCm: { w: Math.round(singleDoorW * 100), h: Math.round(doorH * 100), d: 2.2 },
+      explodeRot: { x: 0, y: isLeftHinged ? -0.25 : 0.25, z: 0 }
+    });
+    registerOpenable(pInfo, { openRotY: isLeftHinged ? -Math.PI * 0.55 : Math.PI * 0.55 });
+  }
+
+  const topGroup = new THREE.Group();
+  topGroup.position.set(0, plinthH + boxH + 0.018, 0.01);
+
+  const slab = new THREE.Mesh(boxGeo(w + 0.03, 0.036, d + 0.03), createStonePartMaterial());
+  topGroup.add(slab);
+
+  const sinkW = Math.min(0.52, doorsAreaW * 0.72);
+  const sinkD = Math.min(0.36, d * 0.65);
+  const basinRim = new THREE.Mesh(boxGeo(sinkW, 0.012, sinkD), inoxMat);
+  basinRim.position.set(doorsCenterX, 0.02, 0.01);
+  basinRim.userData.nonPaintable = true;
+  topGroup.add(basinRim);
+
+  const basinInner = new THREE.Mesh(boxGeo(sinkW - 0.04, 0.014, sinkD - 0.04), cavityMat);
+  basinInner.position.set(doorsCenterX, 0.021, 0.01);
+  basinInner.userData.nonPaintable = true;
+  topGroup.add(basinInner);
+
+  const faucetNeck = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.18, 24), chromeMat);
+  faucetNeck.position.set(doorsCenterX, 0.1, -sinkD / 2 - 0.03);
+  faucetNeck.userData.nonPaintable = true;
+  topGroup.add(faucetNeck);
+
+  const faucetSpout = new THREE.Mesh(boxGeo(0.016, 0.014, 0.12), chromeMat);
+  faucetSpout.position.set(doorsCenterX, 0.185, -sinkD / 2 + 0.025);
+  faucetSpout.userData.nonPaintable = true;
+  topGroup.add(faucetSpout);
+
+  registerPart(topGroup, { x: 0, y: 0.65, z: 0 }, { name: 'Tampo & Cuba', dimsCm: { w: spec.wCm + 3, h: 3.6, d: spec.dCm + 3 } });
+}
+
+/* CONSTRUTOR 2: GUARDA-ROUPA */
+function buildProceduralWardrobe(spec) {
+  clearFurniture();
+  const w = spec.wCm / 100;
+  const h = spec.hCm / 100;
+  const d = spec.dCm / 100;
+  const t = 0.022;
+  const plinthH = 0.07;
+  const bodyH = h - plinthH;
+
+  const plinthBox = new THREE.Mesh(boxGeo(w - 0.03, plinthH, d - 0.04), createPartWoodMaterial(true));
+  plinthBox.position.set(0, plinthH / 2, -0.01);
+  registerPart(plinthBox, { x: 0, y: -0.25, z: 0 }, { name: 'Base Rodapé', dimsCm: { w: spec.wCm - 3, h: 7, d: spec.dCm - 4 } });
+
+  const backPanel = new THREE.Mesh(boxGeo(w - 0.01, bodyH - 0.01, 0.012), createPartWoodMaterial(false));
+  backPanel.position.set(0, plinthH + bodyH / 2, -d / 2 + 0.006);
+  registerPart(backPanel, { x: 0, y: 0.15, z: -0.58 }, { name: 'Parede Fundo', dimsCm: { w: spec.wCm - 1, h: Math.round(bodyH * 100), d: 1.2 } });
+
+  const bottom = new THREE.Mesh(boxGeo(w, t, d), createPartWoodMaterial(true));
+  bottom.position.set(0, plinthH + t / 2, 0);
+  registerPart(bottom, { x: 0, y: -0.15, z: 0.25 }, { name: 'Base Inferior', dimsCm: { w: spec.wCm, h: 2.2, d: spec.dCm } });
+
+  const top = new THREE.Mesh(boxGeo(w, t, d), createPartWoodMaterial(true));
+  top.position.set(0, plinthH + bodyH - t / 2, 0);
+  registerPart(top, { x: 0, y: 0.58, z: 0 }, { name: 'Tampo Superior', dimsCm: { w: spec.wCm, h: 2.2, d: spec.dCm } });
+
+  const leftSide = new THREE.Mesh(boxGeo(t, bodyH - t * 2, d), createPartWoodMaterial(false));
+  leftSide.position.set(-w / 2 + t / 2, plinthH + bodyH / 2, 0);
+  registerPart(leftSide, { x: -0.48, y: 0.1, z: 0 }, { name: 'Parede Lateral Esquerda', dimsCm: { w: 2.2, h: Math.round((bodyH - t * 2) * 100), d: spec.dCm } });
+
+  const rightSide = new THREE.Mesh(boxGeo(t, bodyH - t * 2, d), createPartWoodMaterial(false));
+  rightSide.position.set(w / 2 - t / 2, plinthH + bodyH / 2, 0);
+  registerPart(rightSide, { x: 0.48, y: 0.1, z: 0 }, { name: 'Parede Lateral Direita', dimsCm: { w: 2.2, h: Math.round((bodyH - t * 2) * 100), d: spec.dCm } });
+
+  const maleiroY = plinthH + bodyH - 0.42;
+  const maleiroShelf = new THREE.Mesh(boxGeo(w - t * 2, t, d - 0.03), createPartWoodMaterial(true));
+  maleiroShelf.position.set(0, maleiroY, 0);
+  registerPart(maleiroShelf, { x: 0, y: 0.4, z: 0.35 }, { name: 'Prateleira Maleiro', dimsCm: { w: spec.wCm - 4, h: 2.2, d: spec.dCm - 3 } });
+
+  const hasCenterDiv = w >= 1.25;
+  if (hasCenterDiv) {
+    const midDiv = new THREE.Mesh(boxGeo(t, maleiroY - (plinthH + t), d - 0.04), createPartWoodMaterial(false));
+    midDiv.position.set(0, (plinthH + t + maleiroY) / 2, -0.005);
+    registerPart(midDiv, { x: 0, y: 0.2, z: 0.3 }, { name: 'Divisória Central', dimsCm: { w: 2.2, h: Math.round((maleiroY - plinthH - t) * 100), d: spec.dCm - 4 } });
+  }
+
+  const rodSpan = hasCenterDiv ? w / 2 - t * 1.5 : w - t * 2;
+  const rodCenterX = hasCenterDiv ? -w / 4 : 0;
+  const hangingRod = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, rodSpan - 0.02, 20), chromeMat);
+  hangingRod.rotation.z = Math.PI / 2;
+  hangingRod.position.set(rodCenterX, maleiroY - 0.12, 0);
+  registerPart(hangingRod, { x: -0.25, y: 0.25, z: 0.45 }, { name: 'Cabideiro Metálico', dimsCm: { w: Math.round(rodSpan * 100), h: 2.8, d: 2.8 }, paintable: false });
+
+  const shelfSpan = hasCenterDiv ? w / 2 - t * 1.5 : w - t * 2;
+  const shelfCenterX = hasCenterDiv ? w / 4 : 0;
+  [0.38, 0.56, 0.74].forEach((ratio, idx) => {
+    const sy = plinthH + (maleiroY - plinthH) * ratio;
+    const sh = new THREE.Mesh(boxGeo(shelfSpan - 0.01, t, d - 0.05), createPartWoodMaterial(true));
+    sh.position.set(shelfCenterX, sy, -0.01);
+    registerPart(sh, { x: 0.25, y: 0.1 * idx, z: 0.38 + idx * 0.08 }, { name: `Prateleira ${idx + 1}`, dimsCm: { w: Math.round(shelfSpan * 100), h: 2.2, d: spec.dCm - 5 } });
+  });
+
+  if (spec.hasDrawers) {
+    const drawerW = shelfSpan - 0.04;
+    for (let g = 0; g < 2; g++) {
+      const dg = new THREE.Group();
+      const gy = plinthH + t + 0.11 + g * 0.19;
+      dg.position.set(shelfCenterX, gy, d / 2 - 0.04);
+      const dFront = new THREE.Mesh(boxGeo(drawerW, 0.17, 0.02), createPartWoodMaterial(false));
+      dg.add(dFront);
+      const pInfo = registerPart(dg, { x: 0.3, y: 0.05, z: 0.55 + g * 0.1 }, { name: `Gaveta Interna ${g + 1}`, dimsCm: { w: Math.round(drawerW * 100), h: 17, d: spec.dCm - 8 } });
+      registerOpenable(pInfo, { openOffset: new THREE.Vector3(0, 0, 0.22) });
+    }
+  }
+
+  const doorCount = spec.doorCount;
+  const totalInnerW = w - t * 2;
+  const singleDoorW = (totalInnerW - (doorCount - 1) * 0.005) / doorCount;
+  const doorH = bodyH - t * 2 - 0.008;
+  const doorY = plinthH + bodyH / 2;
+
+  for (let i = 0; i < doorCount; i++) {
+    const isLeftHinged = i % 2 === 0;
+    const slotX = -totalInnerW / 2 + singleDoorW * (i + 0.5) + i * 0.005;
+    const pivot = new THREE.Group();
+    pivot.position.set(isLeftHinged ? slotX - singleDoorW / 2 : slotX + singleDoorW / 2, doorY, d / 2 + 0.002);
+
+    const doorPanel = new THREE.Mesh(boxGeo(singleDoorW, doorH, t), createPartWoodMaterial(false));
+    doorPanel.position.set(isLeftHinged ? singleDoorW / 2 : -singleDoorW / 2, 0, 0);
+    pivot.add(doorPanel);
+
+    const longHandle = new THREE.Mesh(boxGeo(0.014, 0.32, 0.022), chromeMat);
+    longHandle.position.set(isLeftHinged ? singleDoorW - 0.032 : -singleDoorW + 0.032, 0, 0.018);
+    longHandle.userData.nonPaintable = true;
+    pivot.add(longHandle);
+
+    const pInfo = registerPart(pivot, { x: (i - doorCount / 2) * 0.22, y: 0, z: 0.74 }, {
+      name: `Porta ${i + 1}`,
+      dimsCm: { w: Math.round(singleDoorW * 100), h: Math.round(doorH * 100), d: 2.2 },
+      explodeRot: { x: 0, y: isLeftHinged ? -0.22 : 0.22, z: 0 }
+    });
+    registerOpenable(pInfo, { openRotY: isLeftHinged ? -Math.PI * 0.54 : Math.PI * 0.54 });
   }
 }
 
-@media (max-width: 720px) {
-  .nav-pill,
-  .topbar-actions .btn-sage {
-    display: none;
+/* CONSTRUTOR 3: ARMÁRIO DE COZINHA */
+function buildProceduralKitchen(spec) {
+  clearFurniture();
+  const w = spec.wCm / 100;
+  const totalH = spec.hCm / 100;
+  const d = spec.dCm / 100;
+  const t = 0.022;
+  const lowerH = 0.86;
+
+  const plinthBox = new THREE.Mesh(boxGeo(w - 0.04, 0.08, d - 0.05), createPartWoodMaterial(true));
+  plinthBox.position.set(0, 0.04, -0.015);
+  registerPart(plinthBox, { x: 0, y: -0.25, z: 0 }, { name: 'Rodapé Balcão', dimsCm: { w: spec.wCm - 4, h: 8, d: spec.dCm - 5 } });
+
+  const lowerBoxH = lowerH - 0.08 - 0.036;
+  const lowerBottom = new THREE.Mesh(boxGeo(w, t, d), createPartWoodMaterial(true));
+  lowerBottom.position.set(0, 0.08 + t / 2, 0);
+  registerPart(lowerBottom, { x: 0, y: -0.15, z: 0.25 }, { name: 'Base Balcão Inferior', dimsCm: { w: spec.wCm, h: 2.2, d: spec.dCm } });
+
+  const wallNames = ['Parede Lateral Esquerda', 'Divisória Central Balcão', 'Parede Lateral Direita'];
+  [-w / 2 + t / 2, 0, w / 2 - t / 2].forEach((px, idx) => {
+    const post = new THREE.Mesh(boxGeo(t, lowerBoxH - t, d), createPartWoodMaterial(false));
+    post.position.set(px, 0.08 + lowerBoxH / 2 + t / 2, 0);
+    registerPart(post, { x: (idx - 1) * 0.42, y: 0.1, z: 0 }, { name: wallNames[idx], dimsCm: { w: 2.2, h: Math.round((lowerBoxH - t) * 100), d: spec.dCm } });
+  });
+
+  const counterTop = new THREE.Mesh(boxGeo(w + 0.04, 0.036, d + 0.04), createStonePartMaterial());
+  counterTop.position.set(0, lowerH - 0.018, 0.01);
+  registerPart(counterTop, { x: 0, y: 0.35, z: 0.35 }, { name: 'Tampo Bancada', dimsCm: { w: spec.wCm + 4, h: 3.6, d: spec.dCm + 4 } });
+
+  const doorCount = spec.doorCount;
+  const innerW = w - t * 2;
+  const singleW = (innerW - (doorCount - 1) * 0.006) / doorCount;
+  const doorH = lowerBoxH - 0.04;
+
+  for (let i = 0; i < doorCount; i++) {
+    const isLeft = i % 2 === 0;
+    const slotX = -innerW / 2 + singleW * (i + 0.5) + i * 0.006;
+    const pivot = new THREE.Group();
+    pivot.position.set(isLeft ? slotX - singleW / 2 : slotX + singleW / 2, 0.08 + t + doorH / 2, d / 2 + 0.002);
+
+    const panel = new THREE.Mesh(boxGeo(singleW, doorH, t), createPartWoodMaterial(false));
+    panel.position.set(isLeft ? singleW / 2 : -singleW / 2, 0, 0);
+    pivot.add(panel);
+
+    const knob = new THREE.Mesh(boxGeo(0.014, 0.11, 0.02), chromeMat);
+    knob.position.set(isLeft ? singleW - 0.03 : -singleW + 0.03, doorH * 0.32, 0.018);
+    knob.userData.nonPaintable = true;
+    pivot.add(knob);
+
+    const pInfo = registerPart(pivot, { x: (i - doorCount / 2) * 0.2, y: 0.05, z: 0.65 }, { name: `Porta Inferior ${i + 1}`, dimsCm: { w: Math.round(singleW * 100), h: Math.round(doorH * 100), d: 2.2 } });
+    registerOpenable(pInfo, { openRotY: isLeft ? -Math.PI * 0.54 : Math.PI * 0.54 });
   }
 
-  .menu-toggle {
-    display: flex;
-  }
+  if (totalH >= 1.5) {
+    const upperD = Math.min(0.36, d * 0.65);
+    const upperH = Math.min(0.68, totalH - lowerH - 0.55);
+    const upperBaseY = totalH - upperH;
+    const upperZ = -d / 2 + upperD / 2;
 
-  .topbar,
-  .hero-section,
-  .craft-section,
-  .works-section,
-  .contact-section {
-    padding-left: 1.15rem;
-    padding-right: 1.15rem;
-  }
+    const uBottom = new THREE.Mesh(boxGeo(w, t, upperD), createPartWoodMaterial(true));
+    uBottom.position.set(0, upperBaseY + t / 2, upperZ);
+    registerPart(uBottom, { x: 0, y: 0.45, z: 0.25 }, { name: 'Base Armário Aéreo', dimsCm: { w: spec.wCm, h: 2.2, d: Math.round(upperD * 100) } });
 
-  .creator-actions {
-    flex-direction: column;
-  }
+    const uTop = new THREE.Mesh(boxGeo(w, t, upperD), createPartWoodMaterial(true));
+    uTop.position.set(0, totalH - t / 2, upperZ);
+    registerPart(uTop, { x: 0, y: 0.72, z: 0 }, { name: 'Tampo Armário Aéreo', dimsCm: { w: spec.wCm, h: 2.2, d: Math.round(upperD * 100) } });
 
-  .mode-tabs-bar {
-    grid-template-columns: 1fr 1fr;
-    gap: 0.45rem;
-  }
+    [-w / 2 + t / 2, w / 2 - t / 2].forEach((ux, idx) => {
+      const uSide = new THREE.Mesh(boxGeo(t, upperH - t * 2, upperD), createPartWoodMaterial(false));
+      uSide.position.set(ux, upperBaseY + upperH / 2, upperZ);
+      registerPart(uSide, { x: (idx === 0 ? -0.45 : 0.45), y: 0.55, z: 0 }, { name: idx === 0 ? 'Lateral Aéreo Esq.' : 'Lateral Aéreo Dir.', dimsCm: { w: 2.2, h: Math.round((upperH - t * 2) * 100), d: Math.round(upperD * 100) } });
+    });
 
-  .mode-tab-btn {
-    padding: 0.65rem 0.65rem;
-    font-size: 0.78rem;
-  }
+    for (let i = 0; i < doorCount; i++) {
+      const isLeft = i % 2 === 0;
+      const slotX = -innerW / 2 + singleW * (i + 0.5) + i * 0.006;
+      const pivot = new THREE.Group();
+      pivot.position.set(isLeft ? slotX - singleW / 2 : slotX + singleW / 2, upperBaseY + upperH / 2, upperZ + upperD / 2 + 0.002);
 
-  .stage-card {
-    height: auto;
-    display: flex;
-    flex-direction: column;
-  }
+      const uDoor = new THREE.Mesh(boxGeo(singleW, upperH - 0.015, t), createPartWoodMaterial(false));
+      uDoor.position.set(isLeft ? singleW / 2 : -singleW / 2, 0, 0);
+      pivot.add(uDoor);
 
-  .stage-viewport {
-    position: relative;
-    height: 380px;
-  }
+      const knob = new THREE.Mesh(boxGeo(0.014, 0.1, 0.02), chromeMat);
+      knob.position.set(isLeft ? singleW - 0.03 : -singleW + 0.03, -upperH * 0.3, 0.018);
+      knob.userData.nonPaintable = true;
+      pivot.add(knob);
 
-  .stage-hint {
-    top: auto;
-    bottom: 0.75rem;
-    left: 0.85rem;
-    font-size: 0.7rem;
-  }
-
-  .stage-top-tag {
-    top: 0.85rem;
-    right: 0.85rem;
-    font-size: 0.72rem;
-  }
-
-  .stage-controls-panel {
-    position: relative;
-    left: auto;
-    right: auto;
-    bottom: auto;
-    padding: 0.9rem;
-    background: rgba(255, 253, 249, 0.85);
-    border-top: 1px solid var(--border-light);
-    pointer-events: auto;
-  }
-
-  .assembly-bar {
-    border-radius: 16px;
-    flex-wrap: wrap;
-    padding: 0.65rem;
-  }
-
-  .slider-group {
-    order: 3;
-    min-width: 100%;
-    max-width: 100%;
-    padding-top: 0.25rem;
-  }
-
-  .floating-cards {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .steps-card {
-    max-width: 100%;
-  }
-
-  .swatch-card {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .swatch-title {
-    margin-bottom: 0;
-  }
-
-  .contact-card {
-    padding: 1.75rem;
+      const pInfo = registerPart(pivot, { x: (i - doorCount / 2) * 0.2, y: 0.55, z: 0.68 }, { name: `Porta Aérea ${i + 1}`, dimsCm: { w: Math.round(singleW * 100), h: Math.round((upperH - 0.015) * 100), d: 2.2 } });
+      registerOpenable(pInfo, { openRotY: isLeft ? -Math.PI * 0.54 : Math.PI * 0.54 });
+    }
   }
 }
 
+/* CONSTRUTOR 4: BALCÃO RIPADO COM LED QUENTE */
+function buildProceduralSlatted(spec) {
+  clearFurniture();
+  const w = spec.wCm / 100;
+  const h = spec.hCm / 100;
+  const d = spec.dCm / 100;
+  const t = 0.025;
+  hasLedFeature = true;
+  const o = spec.opts || {};
+  const hollow = Boolean(o.divider || o.backShelves);
+  const LEDC = { quente: [0xffd27d, 0xd9a773, 0xffb84d], frio: [0xe8f4ff, 0x9fd0ff, 0xbfe0ff], neutro: [0xfff6e6, 0xffe2b8, 0xffeacc] }[o.led || 'quente'];
+  ledStripMat.color.setHex(LEDC[0]);
+  ledStripMat.emissive.setHex(LEDC[1]);
 
-/* ==========================================================================
-   ZACFURNITURE v3 — paleta: Linho #F7F5F0 · Nogueira #4A3525 · Terracota #C86D51 · Verde-Musgo #3D5245
-   ========================================================================== */
-:root {
-  --linen: #F7F5F0; --walnut: #4A3525; --terra: #C86D51; --moss: #3D5245;
-  --espresso: #F7F5F0; --espresso-deep: #F7F5F0; --espresso-soft: #EFE9DE;
-  --oat: #4A3525; --oat-muted: rgba(74, 53, 37, 0.74); --oat-subtle: rgba(74, 53, 37, 0.1);
-  --sage: #3D5245; --sage-hover: #4B6554;
-  --glass-bg: rgba(255, 253, 249, 0.8); --glass-card: rgba(255, 253, 249, 0.95); --border-light: rgba(74, 53, 37, 0.16);
+  const base = new THREE.Mesh(boxGeo(w - 0.04, t, d - 0.04), createPartWoodMaterial(true));
+  base.position.set(0, t / 2, 0);
+  registerPart(base, { x: 0, y: -0.25, z: 0 }, { name: 'Base Inferior', dimsCm: { w: spec.wCm - 4, h: 2.5, d: spec.dCm - 4 } });
+
+  if (hollow) {
+    const iw = w - 0.06, ih = h - 0.08, idp = d - 0.07, cy = ih / 2 + t, tt = 0.022;
+    const pm = (sx, sy, sz, x, y, z, rot) => { const m = new THREE.Mesh(boxGeo(sx, sy, sz), createPartWoodMaterial(rot)); m.position.set(x, y, z); return m; };
+    [-1, 1].forEach((k) => registerPart(pm(tt, ih, idp, k * (iw / 2 - tt / 2), cy, -0.01, false), { x: k * 0.4, y: 0.1, z: -0.2 }, { name: k < 0 ? 'Parede Lateral Esquerda' : 'Parede Lateral Direita', dimsCm: { w: 2.2, h: Math.round(ih * 100), d: Math.round(idp * 100) } }));
+    registerPart(pm(iw - 2 * tt, tt, idp, 0, t + ih - tt / 2, -0.01, true), { x: 0, y: 0.45, z: -0.2 }, { name: 'Travessa Fixa Superior', dimsCm: { w: Math.round((iw - 2 * tt) * 100), h: 2.2, d: Math.round(idp * 100) } });
+    for (let k = 1; k <= (o.divider || 0); k++) registerPart(pm(tt, ih - 2 * tt, idp - 0.02, -iw / 2 + tt + ((iw - 2 * tt) * k) / (o.divider + 1), cy, -0.02, false), { x: 0, y: 0.15, z: -0.3 }, { name: `Divisória ${k}`, dimsCm: { w: 2.2, h: Math.round((ih - 2 * tt) * 100), d: Math.round((idp - 0.02) * 100) } });
+    for (let k = 1; k <= (o.backShelves || 0); k++) registerPart(pm(iw - 2 * tt - 0.004, tt, idp - 0.03, 0, t + ((ih - tt) * k) / (o.backShelves + 1), -0.025, true), { x: 0, y: 0.1 + k * 0.05, z: -0.35 - k * 0.05 }, { name: `Prateleira Traseira ${k}`, dimsCm: { w: Math.round((iw - 2 * tt) * 100), h: 2.2, d: Math.round((idp - 0.03) * 100) } });
+  } else {
+    const coreBox = new THREE.Mesh(boxGeo(w - 0.06, h - 0.08, d - 0.07), createPartWoodMaterial(false));
+    coreBox.position.set(0, (h - 0.08) / 2 + t, -0.01);
+    registerPart(coreBox, { x: 0, y: 0.35, z: -0.38 }, { name: 'Caixa Estrutural Interna', dimsCm: { w: spec.wCm - 6, h: spec.hCm - 8, d: spec.dCm - 7 } });
+  }
+
+  const slatCount = Math.max(16, Math.round(w * 18));
+  const slatW = 0.024;
+  const slatDepth = 0.022;
+  const slatH = h - 0.055;
+  const startX = -(w - 0.06) / 2 + slatW / 2;
+  const stepX = (w - 0.06 - slatW) / (slatCount - 1);
+
+  const slatsGroup = new THREE.Group();
+  const sharedSlatMat = createPartWoodMaterial(false);
+  for (let i = 0; i < slatCount; i++) {
+    const slat = new THREE.Mesh(boxGeo(slatW, slatH, slatDepth), sharedSlatMat);
+    slat.position.set(startX + i * stepX, slatH / 2 + 0.015, d / 2 - 0.02);
+    slatsGroup.add(slat);
+  }
+  registerPart(slatsGroup, { x: 0, y: 0.18, z: 0.58 }, { name: `Painel Ripado (${slatCount} ripas)`, dimsCm: { w: spec.wCm - 6, h: Math.round(slatH * 100), d: 2.2 } });
+
+  const ledBar = new THREE.Mesh(boxGeo(w - 0.04, 0.014, 0.018), ledStripMat);
+  ledBar.position.set(0, h - 0.042, d / 2 - 0.008);
+  registerPart(ledBar, { x: 0, y: 0.45, z: 0.25 }, { name: `Perfil LED ${o.led === 'frio' ? 'Frio' : o.led === 'neutro' ? 'Neutro' : 'Quente'}`, dimsCm: { w: spec.wCm - 4, h: 1.4, d: 1.8 }, paintable: false });
+
+  ledLight = new THREE.PointLight(LEDC[2], 0, 2.4, 1.6);
+  ledLight.position.set(0, h - 0.08, d / 2 + 0.18);
+  furnitureRoot.add(ledLight);
+
+  const counterTop = new THREE.Mesh(boxGeo(w + 0.05, 0.042, d + 0.05), createPartWoodMaterial(true));
+  counterTop.position.set(0, h - 0.015, 0.01);
+  registerPart(counterTop, { x: 0, y: 0.65, z: 0 }, { name: 'Tampo Encabeçado', dimsCm: { w: spec.wCm + 5, h: 4.2, d: spec.dCm + 5 } });
 }
-html { background-color: #F7F5F0; }
-body { background-color: transparent; }
 
-.fluted-backdrop {
-  background:
-    radial-gradient(900px 600px at 10% 0%, rgba(200, 109, 81, 0.16), transparent 62%),
-    radial-gradient(800px 560px at 96% 28%, rgba(61, 82, 69, 0.14), transparent 60%),
-    radial-gradient(900px 700px at 50% 112%, rgba(74, 53, 37, 0.12), transparent 65%),
-    repeating-linear-gradient(90deg, rgba(74, 53, 37, 0.035) 0 2px, transparent 2px 26px),
-    linear-gradient(180deg, #FBF9F4, #F1EBDF 60%, #EAE1D1);
-  overflow: hidden;
+/* CONSTRUTOR 5: ESTANTE & NICHOS */
+function buildProceduralBookshelf(spec) {
+  clearFurniture();
+  const w = spec.wCm / 100;
+  const h = spec.hCm / 100;
+  const d = spec.dCm / 100;
+  const t = 0.022;
+
+  const bottom = new THREE.Mesh(boxGeo(w, t, d), createPartWoodMaterial(true));
+  bottom.position.set(0, 0.05, 0);
+  registerPart(bottom, { x: 0, y: -0.2, z: 0.2 }, { name: 'Base Inferior', dimsCm: { w: spec.wCm, h: 2.2, d: spec.dCm } });
+
+  const top = new THREE.Mesh(boxGeo(w, t, d), createPartWoodMaterial(true));
+  top.position.set(0, h - t / 2, 0);
+  registerPart(top, { x: 0, y: 0.55, z: 0 }, { name: 'Tampo Superior', dimsCm: { w: spec.wCm, h: 2.2, d: spec.dCm } });
+
+  [-w / 2 + t / 2, w / 2 - t / 2].forEach((sx, idx) => {
+    const side = new THREE.Mesh(boxGeo(t, h - 0.05 - t, d), createPartWoodMaterial(false));
+    side.position.set(sx, (0.05 + h - t) / 2, 0);
+    registerPart(side, { x: idx === 0 ? -0.45 : 0.45, y: 0.1, z: 0 }, { name: idx === 0 ? 'Parede Lateral Esquerda' : 'Parede Lateral Direita', dimsCm: { w: 2.2, h: spec.hCm - 7, d: spec.dCm } });
+  });
+
+  const shelfCount = Math.max(3, Math.round(h / 0.38));
+  for (let i = 1; i < shelfCount; i++) {
+    const sy = 0.05 + ((h - 0.05 - t) / shelfCount) * i;
+    const shelf = new THREE.Mesh(boxGeo(w - t * 2, t, d - 0.01), createPartWoodMaterial(true));
+    shelf.position.set(0, sy, 0);
+    registerPart(shelf, { x: 0, y: 0.14 * i, z: 0.38 + i * 0.05 }, { name: `Prateleira ${i}`, dimsCm: { w: spec.wCm - 4, h: 2.2, d: spec.dCm - 1 } });
+
+    const divX = (i % 2 === 0 ? -1 : 1) * (w * 0.16);
+    const segH = (h - 0.05 - t) / shelfCount - t;
+    const divider = new THREE.Mesh(boxGeo(t, segH, d - 0.02), createPartWoodMaterial(false));
+    divider.position.set(divX, sy + segH / 2 + t / 2, 0);
+    registerPart(divider, { x: divX * 0.85, y: 0.2, z: 0.45 }, { name: `Divisória Nicho ${i}`, dimsCm: { w: 2.2, h: Math.round(segH * 100), d: spec.dCm - 2 } });
+  }
 }
-.fluted-backdrop::before, .fluted-backdrop::after {
-  content: ""; position: absolute; width: 60vmax; height: 60vmax; border-radius: 50%; will-change: transform;
-  animation: drift 26s ease-in-out infinite alternate;
+
+/* CONSTRUTOR 6: ARMÁRIO MULTIUSO */
+function buildProceduralCabinet(spec) {
+  clearFurniture();
+  const w = spec.wCm / 100;
+  const h = spec.hCm / 100;
+  const d = spec.dCm / 100;
+  const t = 0.022;
+  const plinthH = 0.07;
+  const bodyH = h - plinthH;
+
+  const plinthBox = new THREE.Mesh(boxGeo(w - 0.03, plinthH, d - 0.04), createPartWoodMaterial(true));
+  plinthBox.position.set(0, plinthH / 2, -0.01);
+  registerPart(plinthBox, { x: 0, y: -0.25, z: 0 }, { name: 'Rodapé Base', dimsCm: { w: spec.wCm - 3, h: 7, d: spec.dCm - 4 } });
+
+  const bottom = new THREE.Mesh(boxGeo(w, t, d), createPartWoodMaterial(true));
+  bottom.position.set(0, plinthH + t / 2, 0);
+  registerPart(bottom, { x: 0, y: -0.15, z: 0.25 }, { name: 'Base Inferior', dimsCm: { w: spec.wCm, h: 2.2, d: spec.dCm } });
+
+  const top = new THREE.Mesh(boxGeo(w, t, d), createPartWoodMaterial(true));
+  top.position.set(0, plinthH + bodyH - t / 2, 0);
+  registerPart(top, { x: 0, y: 0.55, z: 0 }, { name: 'Tampo Superior', dimsCm: { w: spec.wCm, h: 2.2, d: spec.dCm } });
+
+  [-w / 2 + t / 2, w / 2 - t / 2].forEach((sx, idx) => {
+    const side = new THREE.Mesh(boxGeo(t, bodyH - t * 2, d), createPartWoodMaterial(false));
+    side.position.set(sx, plinthH + bodyH / 2, 0);
+    registerPart(side, { x: idx === 0 ? -0.48 : 0.48, y: 0.1, z: 0 }, { name: idx === 0 ? 'Parede Lateral Esquerda' : 'Parede Lateral Direita', dimsCm: { w: 2.2, h: Math.round((bodyH - t * 2) * 100), d: spec.dCm } });
+  });
+
+  const shelves = Math.max(3, Math.round(bodyH / 0.36));
+  for (let s = 1; s < shelves; s++) {
+    const sy = plinthH + (bodyH / shelves) * s;
+    const sh = new THREE.Mesh(boxGeo(w - t * 2 - 0.006, t, d - 0.05), createPartWoodMaterial(true));
+    sh.position.set(0, sy, -0.015);
+    registerPart(sh, { x: 0, y: 0.1 * s, z: 0.42 }, { name: `Prateleira Interna ${s}`, dimsCm: { w: spec.wCm - 5, h: 2.2, d: spec.dCm - 5 } });
+  }
+
+  const doorCount = spec.doorCount;
+  const innerW = w - t * 2;
+  const singleDoorW = (innerW - (doorCount - 1) * 0.005) / doorCount;
+  const doorH = bodyH - t * 2 - 0.008;
+
+  for (let i = 0; i < doorCount; i++) {
+    const isLeft = i % 2 === 0;
+    const slotX = -innerW / 2 + singleDoorW * (i + 0.5) + i * 0.005;
+    const pivot = new THREE.Group();
+    pivot.position.set(isLeft ? slotX - singleDoorW / 2 : slotX + singleDoorW / 2, plinthH + bodyH / 2, d / 2 + 0.002);
+
+    const panel = new THREE.Mesh(boxGeo(singleDoorW, doorH, t), createPartWoodMaterial(false));
+    panel.position.set(isLeft ? singleDoorW / 2 : -singleDoorW / 2, 0, 0);
+    pivot.add(panel);
+
+    const knob = new THREE.Mesh(boxGeo(0.014, 0.22, 0.02), chromeMat);
+    knob.position.set(isLeft ? singleDoorW - 0.032 : -singleDoorW + 0.032, 0, 0.018);
+    knob.userData.nonPaintable = true;
+    pivot.add(knob);
+
+    const pInfo = registerPart(pivot, { x: (i - doorCount / 2) * 0.22, y: 0, z: 0.68 }, { name: `Porta ${i + 1}`, dimsCm: { w: Math.round(singleDoorW * 100), h: Math.round(doorH * 100), d: 2.2 } });
+    registerOpenable(pInfo, { openRotY: isLeft ? -Math.PI * 0.54 : Math.PI * 0.54 });
+  }
 }
-.fluted-backdrop::before { top: -25vmax; left: -15vmax; background: radial-gradient(circle, rgba(200, 109, 81, 0.2), transparent 65%); }
-.fluted-backdrop::after { bottom: -30vmax; right: -20vmax; background: radial-gradient(circle, rgba(61, 82, 69, 0.2), transparent 65%); animation-duration: 32s; animation-direction: alternate-reverse; }
-@keyframes drift { to { transform: translate3d(8vmax, 6vmax, 0) scale(1.15); } }
-.ambient-glow { background: none; }
 
-/* marca e títulos */
-.brand-mark { background: linear-gradient(135deg, var(--terra), var(--moss)); animation: floaty 5s ease-in-out infinite; }
-.brand-name { font-weight: 500; }
-.brand-name b { font-weight: 700; background: linear-gradient(90deg, var(--terra), var(--moss)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.grad-text { background: linear-gradient(100deg, var(--terra), var(--moss) 55%, var(--walnut)); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shift 8s ease-in-out infinite alternate; }
-@keyframes shift { to { background-position: 100% 0; } }
-@keyframes floaty { 50% { transform: translateY(-3px) rotate(4deg); } }
-h1, h2, h3 { color: var(--walnut); }
+/* CONSTRUTOR 7: METALON */
+const metalMat = new THREE.MeshStandardMaterial({ color: 0x1c1d20, roughness: 0.45, metalness: 0.8 });
 
-/* botões com degradê e brilho */
-.btn { position: relative; overflow: hidden; transition: transform var(--transition), box-shadow var(--transition), filter var(--transition); }
-.btn-sage { background: linear-gradient(135deg, #3D5245, #5A7868); color: #fff; box-shadow: 0 10px 24px rgba(61, 82, 69, 0.3); border: 0; }
-.btn-terra { background: linear-gradient(135deg, #C86D51, #DD8A66); color: #fff; border: 0; box-shadow: 0 10px 24px rgba(200, 109, 81, 0.28); }
-.btn-glass { background: rgba(255, 255, 255, 0.75); color: var(--walnut); border: 1px solid var(--border-light); }
-.btn:hover { transform: translateY(-2px); filter: brightness(1.06); }
-.btn-sage::after, .btn-terra::after { content: ""; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.35) 50%, transparent 65%); transform: translateX(-120%); }
-.btn-sage:hover::after, .btn-terra:hover::after { transform: translateX(120%); transition: transform 0.7s; }
+function buildMetalon(spec) {
+  clearFurniture();
+  const w = spec.wCm / 100, h = spec.hCm / 100, d = spec.dCm / 100;
+  const s = 0.03, tt = 0.03, legH = h - tt, inset = 0.01;
+  const frame = new THREE.Group();
+  const tube = (x, y, z, sx, sy, sz, rz = 0) => {
+    const m = new THREE.Mesh(boxGeo(sx, sy, sz), metalMat);
+    m.position.set(x, y, z); m.rotation.z = rz; m.userData.nonPaintable = true; frame.add(m);
+  };
+  const lx = w / 2 - s / 2 - inset, lz = d / 2 - s / 2 - inset;
+  [-1, 1].forEach((ix) => [-1, 1].forEach((iz) => tube(ix * lx, legH / 2, iz * lz, s, legH, s)));
+  if (spec.legs6) [-1, 1].forEach((iz) => tube(0, legH / 2, iz * lz, s, legH, s));
+  const levels = spec.levels || 0, ys = [];
+  for (let i = 1; i <= levels; i++) ys.push((legH * i) / (levels + 1));
+  ys.push(legH);
+  const rw = w - 2 * inset - 2 * s, rd = d - 2 * inset - 2 * s;
+  ys.forEach((y) => [-1, 1].forEach((k) => { tube(0, y - s / 2, k * lz, rw, s, s); tube(k * lx, y - s / 2, 0, s, s, rd); }));
+  if (spec.brace === 'H') [-1, 1].forEach((k) => tube(k * lx, legH * 0.22, 0, s, s, rd));
+  if (spec.brace === 'X') {
+    const len = Math.hypot(rw, legH - 0.1), ang = Math.atan2(legH - 0.1, rw);
+    [-1, 1].forEach((k) => tube(0, legH / 2, -lz, len, s, s, k * ang));
+  }
+  registerPart(frame, { x: 0, y: -0.2, z: 0 }, { name: 'Estrutura Metalon 30×30', dimsCm: { w: spec.wCm, h: spec.hCm - 3, d: spec.dCm }, paintable: false });
+  ys.forEach((y, i) => {
+    const top = i === ys.length - 1;
+    const slab = new THREE.Mesh(boxGeo(top ? w : w - 0.01, tt, top ? d : d - 0.01), createPartWoodMaterial(true));
+    slab.position.set(0, y + tt / 2, 0);
+    registerPart(slab, { x: 0, y: 0.25 + i * 0.12, z: 0.3 }, { name: top ? 'Tampo' : `Prateleira ${i + 1}`, dimsCm: { w: top ? spec.wCm : spec.wCm - 1, h: 3, d: top ? spec.dCm : spec.dCm - 1 } });
+  });
+  if (spec.back) {
+    const bk = new THREE.Mesh(boxGeo(w - 0.02, legH - 0.04, 0.012), createPartWoodMaterial(false));
+    bk.position.set(0, legH / 2, -lz - s / 2 - 0.006);
+    registerPart(bk, { x: 0, y: 0.1, z: -0.4 }, { name: 'Fundo', dimsCm: { w: spec.wCm - 2, h: spec.hCm - 7, d: 1.2 } });
+  }
+  if (spec.drawer) {
+    const dw = rw * 0.55, g = new THREE.Group();
+    g.position.set(0, legH - 0.1, lz + s / 2 + 0.011);
+    g.add(new THREE.Mesh(boxGeo(dw, 0.14, 0.022), createPartWoodMaterial(false)));
+    const hd = new THREE.Mesh(boxGeo(0.12, 0.012, 0.02), chromeMat); hd.position.z = 0.02; hd.userData.nonPaintable = true; g.add(hd);
+    const bx = new THREE.Mesh(boxGeo(dw - 0.05, 0.1, rd - 0.04), createPartWoodMaterial(false)); bx.position.set(0, -0.01, -(rd - 0.04) / 2 - 0.011); g.add(bx);
+    const p = registerPart(g, { x: 0, y: 0.2, z: 0.45 }, { name: 'Gaveta 1', dimsCm: { w: Math.round(dw * 100), h: 14, d: Math.round(rd * 100) } });
+    registerOpenable(p, { openOffset: new THREE.Vector3(0, 0, 0.26) });
+  }
+}
 
-/* cartões e palco */
-.stage-card, .creator-box, .detail-drawer { box-shadow: 0 22px 60px rgba(74, 53, 37, 0.14); }
-.stage-card { background: radial-gradient(circle at 50% 38%, #ffffff 0%, #F1EBDF 62%, #E3D8C6 100%); }
-.creator-box, .detail-drawer { background: var(--glass-card); }
-.meta-pill { background: rgba(200, 109, 81, 0.12); color: var(--walnut); border-color: rgba(200, 109, 81, 0.3); }
-.meta-pill .dot, .dot { background: var(--terra); }
-.reveal-up { animation: rise 0.8s both cubic-bezier(0.22, 1, 0.36, 1); }
-@keyframes rise { from { opacity: 0; transform: translateY(22px); } }
+/* CONSTRUTOR 7B: MÓDULO PARAMÉTRICO */
+function buildModular(spec) {
+  clearFurniture();
+  const { base, top, cols } = parseDna(spec.dna);
+  const w = spec.wCm / 100, h = spec.hCm / 100, d = spec.dCm / 100, t = 0.022;
+  const baseH = base === 'r' ? 0.08 : base === 'p' ? 0.12 : 0;
+  const topT = top === 'p' ? 0.036 : top === 't' ? 0.03 : t, over = top === 'n' ? 0 : 0.02;
+  const bodyH = h - baseH - topT, cm = (v) => Math.round(v * 100);
+  const mk = (sx, sy, sz, x, y, z, rot = false, mat = null) => { const m = new THREE.Mesh(boxGeo(sx, sy, sz), mat || createPartWoodMaterial(rot)); m.position.set(x, y, z); return m; };
+  const ex = (x, y) => ({ x: x * 0.5, y: (y - h / 2) * 0.35, z: 0.2 + Math.abs(x) * 0.15 });
+  const handle = (parent, x, y, z, vertical = true) => { const m = new THREE.Mesh(boxGeo(vertical ? 0.012 : 0.1, vertical ? 0.1 : 0.012, 0.02), chromeMat); m.position.set(x, y, z); m.userData.nonPaintable = true; parent.add(m); };
 
-/* performance: blur só na barra do topo; seções fora da tela não são desenhadas */
-body * { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
-.nav-pill { -webkit-backdrop-filter: blur(10px) !important; backdrop-filter: blur(10px) !important; background: rgba(255, 253, 249, 0.85); }
-.craft-section, .works-section, .contact-section, .catalog-section, .steps-section, .faq-section { content-visibility: auto; contain-intrinsic-size: 1px 800px; }
-.canvas-container { contain: layout paint; }
-@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  registerPart(mk(w, t, d, 0, baseH + t / 2, 0, true), ex(0, 0), { name: 'Base Inferior', dimsCm: { w: spec.wCm, h: 2.2, d: spec.dCm } });
+  registerPart(mk(w + 2 * over, topT, d + over, 0, h - topT / 2, over / 2, true, top === 'p' ? createStonePartMaterial() : null), { x: 0, y: 0.55, z: 0 }, { name: 'Tampo Superior', dimsCm: { w: spec.wCm + 4 * over * 50, h: topT * 100, d: spec.dCm + over * 100 }, paintable: top !== 'p' });
+  [-1, 1].forEach((k) => registerPart(mk(t, bodyH - t, d, k * (w / 2 - t / 2), baseH + t + (bodyH - t) / 2, 0), ex(k * w / 2, h / 2), { name: k < 0 ? 'Parede Lateral Esquerda' : 'Parede Lateral Direita', dimsCm: { w: 2.2, h: cm(bodyH - t), d: spec.dCm } }));
+  registerPart(mk(w - 2 * t, bodyH - t, 0.006, 0, baseH + t + (bodyH - t) / 2, -d / 2 + 0.003), { x: 0, y: 0, z: -0.45 }, { name: 'Fundo', dimsCm: { w: spec.wCm - 4.4, h: cm(bodyH - t), d: 0.6 } });
+  if (base === 'r') registerPart(mk(w - 0.04, baseH, d - 0.06, 0, baseH / 2, -0.01), { x: 0, y: -0.25, z: 0 }, { name: 'Rodapé Base', dimsCm: { w: spec.wCm - 4, h: 8, d: spec.dCm - 6 } });
+  if (base === 'p') {
+    const fg = new THREE.Group();
+    [-1, 1].forEach((ix) => [-1, 1].forEach((iz) => { const f = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.014, baseH, 16), createPartWoodMaterial(false)); f.position.set(ix * (w / 2 - 0.06), baseH / 2, iz * (d / 2 - 0.06)); fg.add(f); }));
+    registerPart(fg, { x: 0, y: -0.25, z: 0 }, { name: 'Pés (4)', dimsCm: { w: 4.4, h: 12, d: 4.4 } });
+  }
 
-/* catálogo estrutural */
-.catalog-section, .steps-section, .faq-section { max-width: 1320px; margin: 0 auto; padding: 4rem 2rem; }
-.cat-controls { display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: center; margin: 1.5rem 0; }
-.cat-controls input { flex: 1 1 260px; padding: 0.8rem 1.1rem; border-radius: var(--radius-pill); border: 1px solid var(--border-light); background: #fff; color: var(--walnut); font: inherit; }
-.cat-filters { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-.cat-filter { padding: 0.5rem 1rem; border-radius: var(--radius-pill); border: 1px solid var(--border-light); background: #fff; color: var(--walnut); font: inherit; font-size: 0.85rem; cursor: pointer; transition: all var(--transition); }
-.cat-filter:hover { border-color: var(--terra); }
-.cat-filter.active { background: linear-gradient(135deg, #3D5245, #5A7868); color: #fff; border-color: transparent; }
-.cat-count { color: var(--oat-muted); font-size: 0.85rem; margin-left: auto; }
-.cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 1rem; }
-.cat-card { display: flex; flex-direction: column; gap: 0.4rem; padding: 1.1rem; border-radius: var(--radius-lg); background: #fff; border: 1px solid var(--border-light); box-shadow: 0 8px 24px rgba(74, 53, 37, 0.07); transition: transform var(--transition), box-shadow var(--transition); animation: rise 0.5s both; }
-.cat-card:hover { transform: translateY(-4px); box-shadow: 0 16px 36px rgba(74, 53, 37, 0.16); }
-.cat-card small { color: var(--oat-muted); }
-.cat-card .text-action { margin-top: auto; text-align: left; color: var(--terra); font-weight: 600; }
-.cat-tag { align-self: flex-start; font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: var(--radius-pill); background: rgba(61, 82, 69, 0.12); color: var(--moss); }
-.cat-tag.fam-metalon { background: rgba(74, 53, 37, 0.12); color: var(--walnut); }
-.cat-more { display: flex; margin: 1.5rem auto 0; }
-.thumb { width: 100%; height: 120px; background: linear-gradient(180deg, #FBF9F4, #EFE8DA); border-radius: 12px; padding: 6px; }
-.thumb .t-body { fill: #D9C3A6; stroke: #4A3525; stroke-width: 0.8; }
-.thumb .t-top { fill: #4A3525; }
-.thumb .t-face { fill: #EBD9BF; stroke: #4A3525; stroke-width: 0.6; }
-.thumb .t-nicho { fill: #8B6B4F; stroke: #4A3525; stroke-width: 0.6; }
-.thumb .t-base { fill: #3D2C1F; }
-.thumb .t-leg { fill: #2A2A2D; }
-.thumb .t-line { stroke: #4A3525; stroke-width: 1; }
-.thumb .t-led { stroke: #C86D51; stroke-width: 1.6; }
-
-/* ferragens */
-.bom-box { margin-top: 1rem; padding-top: 0.9rem; border-top: 1px solid var(--border-light); display: grid; gap: 0.35rem; }
-.bom-head { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.9rem; }
-.bom-head span { color: var(--terra); font-weight: 600; }
-.bom-row { display: flex; gap: 0.6rem; font-size: 0.82rem; }
-.bom-row b { min-width: 3.2rem; color: var(--terra); }
-.bom-row small { display: block; color: var(--oat-muted); }
-.hw-legend { margin-top: 0.8rem; font-size: 0.8rem; color: var(--oat-muted); display: flex; gap: 0.5rem; align-items: center; }
-.hw-legend i { width: 12px; height: 12px; border-radius: 50%; background: var(--terra); flex: none; }
-.contact-form .btn + .btn { margin-top: 0.6rem; }
-
-/* como funciona + FAQ */
-.steps-grid { list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
-.steps-grid li { display: grid; gap: 0.4rem; padding: 1.3rem; border-radius: var(--radius-lg); background: #fff; border: 1px solid var(--border-light); transition: transform var(--transition); }
-.steps-grid li:hover { transform: translateY(-4px); }
-.steps-grid b { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, var(--terra), #DD8A66); }
-.steps-grid span { color: var(--oat-muted); font-size: 0.92rem; }
-.faq-section { max-width: 860px; }
-.faq-section details { background: #fff; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1rem 1.3rem; margin-top: 0.7rem; }
-.faq-section summary { cursor: pointer; font-weight: 600; color: var(--walnut); }
-.faq-section p { margin-top: 0.6rem; color: var(--oat-muted); }
-
-/* WhatsApp flutuante */
-.wa-fab { position: fixed; right: 1rem; bottom: 1rem; z-index: 40; padding: 0.8rem 1.2rem; border-radius: var(--radius-pill); background: linear-gradient(135deg, #3D5245, #5A7868); color: #fff; font-weight: 600; text-decoration: none; box-shadow: 0 12px 28px rgba(61, 82, 69, 0.4); animation: pulse 2.8s infinite; }
-@keyframes pulse { 0%, 100% { box-shadow: 0 12px 28px rgba(61, 82, 69, 0.4), 0 0 0 0 rgba(61, 82, 69, 0.35); } 50% { box-shadow: 0 12px 28px rgba(61, 82, 69, 0.4), 0 0 0 14px rgba(61, 82, 69, 0); } }
-.site-footer { background: linear-gradient(135deg, #4A3525, #3D5245); color: #F7F5F0; }
-.site-footer * { color: #F7F5F0; }
-@media (max-width: 640px) { .catalog-section, .steps-section, .faq-section { padding: 3rem 1.1rem; } .wa-fab { bottom: 0.8rem; } }
-
-/* ==========================================================================
-   MODO EDITOR (editor.html)
-   ========================================================================== */
-.ed-body { min-height: 100vh; display: flex; flex-direction: column; }
-.ed-top { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; justify-content: space-between; padding: 0.7rem 1rem; background: rgba(255, 253, 249, 0.95); border-bottom: 1px solid var(--border-light); position: sticky; top: 0; z-index: 20; }
-.ed-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-.ed-actions .btn { padding: 0.55rem 1rem; font-size: 0.85rem; }
-.ed-main { display: grid; grid-template-columns: 1fr 390px; gap: 1rem; padding: 1rem; flex: 1; }
-.ed-stage { position: relative; min-height: 62vh; border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border-light); background: radial-gradient(circle at 50% 38%, #fff 0%, #F1EBDF 62%, #E3D8C6 100%); touch-action: none; }
-.ed-stage canvas { width: 100%; height: 100%; display: block; }
-.ed-hint { position: absolute; left: 0.8rem; bottom: 0.8rem; padding: 0.4rem 0.8rem; border-radius: var(--radius-pill); background: rgba(255, 253, 249, 0.92); font-size: 0.78rem; color: var(--oat-muted); }
-.ed-panel { display: grid; gap: 0.9rem; align-content: start; max-height: calc(100vh - 90px); overflow: auto; }
-.ed-card { background: #fff; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1rem; }
-.ed-card h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--terra); margin-bottom: 0.6rem; }
-.ed-add { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; }
-.ed-chip { padding: 0.55rem 0.3rem; border-radius: 12px; border: 1px solid var(--border-light); background: var(--linen); color: var(--walnut); font: inherit; font-size: 0.8rem; cursor: pointer; transition: all var(--transition); }
-.ed-chip:hover { border-color: var(--terra); background: #fff; transform: translateY(-1px); }
-.ed-chip.danger { color: #a33b2a; }
-.ed-name { width: 100%; padding: 0.6rem 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); font: inherit; color: var(--walnut); margin-bottom: 0.6rem; }
-.ed-fields { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 0.6rem; }
-.ed-field label { display: block; font-size: 0.7rem; color: var(--oat-muted); margin-bottom: 0.2rem; }
-.ed-step { display: flex; align-items: stretch; border: 1px solid var(--border-light); border-radius: 12px; overflow: hidden; background: var(--linen); }
-.ed-step button { width: 30px; border: 0; background: transparent; color: var(--terra); font-size: 1.1rem; cursor: pointer; }
-.ed-step input { width: 100%; min-width: 0; border: 0; text-align: center; background: #fff; font: inherit; color: var(--walnut); padding: 0.45rem 0; }
-.ed-row { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin-top: 0.5rem; font-size: 0.82rem; color: var(--oat-muted); }
-.ed-row select { padding: 0.35rem 0.6rem; border-radius: 10px; border: 1px solid var(--border-light); background: #fff; color: var(--walnut); font: inherit; }
-.ed-colors { display: flex; flex-wrap: wrap; gap: 0.45rem; }
-.ed-sw { width: 32px; height: 32px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--border-light); cursor: pointer; transition: transform var(--transition); }
-.ed-sw:hover { transform: scale(1.15); }
-.ed-sw.on { box-shadow: 0 0 0 2px var(--terra); }
-.ed-list { display: grid; gap: 0.3rem; max-height: 210px; overflow: auto; }
-.ed-item { text-align: left; padding: 0.5rem 0.7rem; border-radius: 10px; border: 1px solid transparent; background: var(--linen); color: var(--walnut); font: inherit; font-size: 0.82rem; cursor: pointer; }
-.ed-item.on { border-color: var(--terra); background: #fff; }
-.ed-item small { color: var(--oat-muted); }
-@media (max-width: 900px) { .ed-main { grid-template-columns: 1fr; } .ed-stage { height: 52vh; min-height: 0; } .ed-panel { max-height: none; } }
+  const n = cols.length, sumW = cols.reduce((a, c) => a + c.w, 0), innerW = w - (n + 1) * t;
+  const yTop0 = h - topT, yBot0 = baseH + t, cnt = { P: 0, G: 0, C: 0, B: 0, R: 0, T: 0 };
+  let cursor = -w / 2 + t;
+  cols.forEach((c, i) => {
+    const cw = (c.w / sumW) * innerW, cx = cursor + cw / 2, z
