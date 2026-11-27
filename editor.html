@@ -9,6 +9,20 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./style.css" />
+  <style>
+    .ed-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+    .ed-tab { flex: 1; padding: 7px 8px; border-radius: 8px; border: 1px solid rgba(35,28,22,.14); background: rgba(255,255,255,.65); color: inherit; font-size: 12px; font-weight: 500; cursor: pointer; transition: .15s; }
+    .ed-tab.on { background: #2c241e; color: #f7f5f0; border-color: #2c241e; }
+    .ed-search { width: 100%; padding: 7px 10px; border-radius: 8px; border: 1px solid rgba(35,28,22,.16); background: rgba(255,255,255,.85); font-size: 12px; margin-bottom: 8px; color: #1f1915; }
+    .ed-select { width: 100%; padding: 7px 8px; border-radius: 8px; border: 1px solid rgba(35,28,22,.16); background: rgba(255,255,255,.85); font-size: 12px; margin-bottom: 8px; color: #1f1915; }
+    .ed-acc-list { max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; padding-right: 2px; }
+    .ed-acc-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; padding: 7px 9px; border-radius: 8px; border: 1px solid rgba(35,28,22,.1); background: rgba(255,255,255,.72); cursor: pointer; font-size: 11.5px; color: #1f1915; transition: .15s; }
+    .ed-acc-item:hover { border-color: #c86d51; background: #fff; }
+    .ed-acc-item small { display: block; opacity: .65; font-size: 10px; margin-top: 2px; }
+    .ed-acc-badge { flex-shrink: 0; font-size: 10px; font-weight: 600; padding: 3px 6px; border-radius: 6px; background: rgba(200,109,81,.14); color: #8c3f27; }
+    .ed-presets { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+    .ed-meta-note { font-size: 11px; opacity: .75; margin-top: 6px; }
+  </style>
   <script type="importmap">
   { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
   </script>
@@ -26,23 +40,40 @@
   </header>
 
   <main class="ed-main">
-    <div class="ed-stage" id="edStage"><span class="ed-hint" id="edHint">Toque numa peça para selecionar · arraste para mover · gire com dois dedos</span></div>
+    <div class="ed-stage" id="edStage"><span class="ed-hint" id="edHint">Toque numa peça ou acessório para selecionar · arraste para mover · gire com dois dedos</span></div>
 
     <aside class="ed-panel">
       <section class="ed-card">
         <h3>Projeto</h3>
         <input class="ed-name" id="projName" aria-label="Nome do projeto" />
         <div class="ed-row" id="projDims"></div>
+        <div class="ed-presets" id="presetGrid"></div>
       </section>
 
       <section class="ed-card">
-        <h3>Adicionar peça</h3>
-        <div class="ed-add" id="addGrid"></div>
+        <div class="ed-tabs" role="tablist">
+          <button class="ed-tab on" id="tabParts" type="button" role="tab" aria-selected="true">Peças e Móveis</button>
+          <button class="ed-tab" id="tabAcc" type="button" role="tab" aria-selected="false">Acessórios (1–115)</button>
+        </div>
+
+        <div id="panelParts">
+          <h3>Adicionar peça ou estrutura</h3>
+          <div class="ed-add" id="addGrid"></div>
+        </div>
+
+        <div id="panelAcc" style="display:none">
+          <h3>Acessórios (1–115)</h3>
+          <input class="ed-search" id="accSearch" type="search" placeholder="Buscar por número ou nome (ex: 45, LED, corrediça, pé palito)..." aria-label="Buscar acessório" />
+          <select class="ed-select" id="accCatFilter" aria-label="Filtrar por categoria de acessório"></select>
+          <div class="ed-acc-list" id="accList"></div>
+          <div class="ed-meta-note" id="accCountInfo">115 acessórios disponíveis</div>
+        </div>
       </section>
 
       <section class="ed-card" id="selCard">
-        <h3>Peça selecionada</h3>
+        <h3>Peça / acessório selecionado</h3>
         <input class="ed-name" id="selName" aria-label="Nome da peça" />
+        <div class="ed-meta-note" id="selMeta"></div>
         <div class="ed-fields" id="sizeFields"></div>
         <div class="ed-fields" id="posFields"></div>
         <div class="ed-row">Passo: <select id="stepSel"><option value="1">1 cm</option><option value="5">5 cm</option><option value="10">10 cm</option></select>
@@ -52,13 +83,13 @@
       </section>
 
       <section class="ed-card">
-        <h3>Pintar</h3>
+        <h3>Pintar / Acabamento</h3>
         <div class="ed-colors" id="colors"></div>
         <div class="ed-row"><button class="ed-chip" id="paintAllBtn">Pintar o móvel todo com a cor escolhida</button></div>
       </section>
 
       <section class="ed-card">
-        <h3>Peças (<span id="partCount">0</span>)</h3>
+        <h3>Peças e acessórios (<span id="partCount">0</span>)</h3>
         <div class="ed-list" id="partList"></div>
       </section>
     </aside>
