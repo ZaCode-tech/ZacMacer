@@ -3,30 +3,460 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ZacFurniture Editor — edite seu móvel</title>
-  <meta name="theme-color" content="#F7F5F0" />
+  <title>ZacFurniture Editor — Edite seu móvel peça a peça</title>
+  <meta name="theme-color" content="#F4EFEA" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./style.css" />
   <script type="importmap">
-  { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
   </script>
+  <style>
+    /* Estilos dedicados e blindados do Modo Editor (Desktop & Mobile) */
+    .ed-body {
+      margin: 0;
+      min-height: 100vh;
+      background: #F4EFEA;
+      color: #2B1D14;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .ed-top {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px 16px;
+      padding: 12px 20px;
+      background: rgba(244, 239, 234, 0.94);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(43, 29, 20, 0.12);
+    }
+
+    .ed-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: #2B1D14;
+      font-size: 1.05rem;
+    }
+
+    .ed-brand small {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(140, 90, 50, 0.12);
+      color: #6E3F24;
+    }
+
+    .ed-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ed-btn {
+      appearance: none;
+      border: 1px solid rgba(43, 29, 20, 0.18);
+      background: #FAF7F2;
+      color: #2B1D14;
+      font-family: inherit;
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 8px 13px;
+      border-radius: 999px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .ed-btn:hover {
+      background: #EFE7DC;
+      border-color: rgba(43, 29, 20, 0.32);
+    }
+
+    .ed-btn:active {
+      transform: scale(0.98);
+    }
+
+    .ed-btn-primary {
+      background: #3A4D39;
+      border-color: #3A4D39;
+      color: #FAF7F2;
+    }
+
+    .ed-btn-primary:hover {
+      background: #2E3E2D;
+      border-color: #2E3E2D;
+    }
+
+    .ed-main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 390px;
+      gap: 18px;
+      padding: 18px 20px 28px;
+      max-width: 1560px;
+      width: 100%;
+      margin: 0 auto;
+      box-sizing: border-box;
+    }
+
+    .ed-stage-col {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .ed-stage {
+      position: relative;
+      width: 100%;
+      height: calc(100vh - 135px);
+      min-height: 440px;
+      border-radius: 22px;
+      overflow: hidden;
+      background: radial-gradient(circle at 50% 35%, #2B2019 0%, #1B1410 78%);
+      border: 1px solid rgba(217, 167, 115, 0.22);
+      box-shadow: 0 22px 48px -18px rgba(27, 20, 16, 0.45);
+      touch-action: none;
+    }
+
+    .ed-stage canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    .ed-hint {
+      position: absolute;
+      left: 14px;
+      bottom: 14px;
+      right: 14px;
+      z-index: 5;
+      pointer-events: none;
+      font-size: 0.78rem;
+      color: #F4EFEA;
+      background: rgba(27, 20, 16, 0.74);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(217, 167, 115, 0.22);
+      padding: 8px 12px;
+      border-radius: 12px;
+      text-align: center;
+    }
+
+    .ed-stage-tools {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      z-index: 6;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .ed-stage-pill {
+      appearance: none;
+      border: 1px solid rgba(217, 167, 115, 0.3);
+      background: rgba(27, 20, 16, 0.78);
+      color: #FAF7F2;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      padding: 7px 11px;
+      border-radius: 999px;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+    }
+
+    .ed-stage-pill:hover {
+      border-color: #D9A773;
+      color: #D9A773;
+    }
+
+    .ed-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      max-height: calc(100vh - 105px);
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+
+    .ed-card {
+      background: #FAF7F2;
+      border: 1px solid rgba(43, 29, 20, 0.12);
+      border-radius: 18px;
+      padding: 14px 16px;
+      box-shadow: 0 8px 24px -14px rgba(43, 29, 20, 0.2);
+      transition: opacity 0.2s ease;
+    }
+
+    .ed-card h3 {
+      margin: 0 0 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.74rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #6E3F24;
+    }
+
+    .ed-name {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 9px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(43, 29, 20, 0.18);
+      background: #FFFFFF;
+      color: #2B1D14;
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .ed-name:focus {
+      outline: none;
+      border-color: #8C5A32;
+    }
+
+    .ed-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      font-size: 0.8rem;
+      color: #5C493C;
+    }
+
+    .ed-add {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .ed-chip {
+      appearance: none;
+      border: 1px solid rgba(43, 29, 20, 0.16);
+      background: #F4EFEA;
+      color: #2B1D14;
+      font-family: inherit;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 8px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      text-align: left;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .ed-chip:hover {
+      background: #E8DEC8;
+      border-color: #8C5A32;
+    }
+
+    .ed-chip.danger {
+      color: #9E2A2B;
+      border-color: rgba(158, 42, 43, 0.25);
+      background: rgba(158, 42, 43, 0.06);
+    }
+
+    .ed-chip.danger:hover {
+      background: rgba(158, 42, 43, 0.14);
+    }
+
+    .ed-fields {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .ed-field label {
+      display: block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.66rem;
+      color: #6E3F24;
+      margin-bottom: 4px;
+    }
+
+    .ed-step {
+      display: flex;
+      align-items: stretch;
+      border: 1px solid rgba(43, 29, 20, 0.18);
+      border-radius: 9px;
+      overflow: hidden;
+      background: #FFFFFF;
+    }
+
+    .ed-step button {
+      appearance: none;
+      border: 0;
+      background: #EFE7DC;
+      color: #2B1D14;
+      font-weight: 700;
+      width: 26px;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .ed-step button:hover {
+      background: #E2D5C3;
+    }
+
+    .ed-step input {
+      width: 100%;
+      min-width: 0;
+      border: 0;
+      text-align: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      color: #2B1D14;
+      padding: 6px 2px;
+      background: transparent;
+    }
+
+    .ed-row select {
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1px solid rgba(43, 29, 20, 0.18);
+      background: #FFFFFF;
+      color: #2B1D14;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.76rem;
+    }
+
+    .ed-colors {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .ed-sw {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid rgba(43, 29, 20, 0.22);
+      cursor: pointer;
+      padding: 0;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .ed-sw.on {
+      transform: scale(1.14);
+      box-shadow: 0 0 0 2px #FAF7F2, 0 0 0 4px #8C5A32;
+    }
+
+    .ed-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 240px;
+      overflow-y: auto;
+    }
+
+    .ed-item {
+      appearance: none;
+      border: 1px solid rgba(43, 29, 20, 0.12);
+      background: #F4EFEA;
+      color: #2B1D14;
+      font-family: inherit;
+      font-size: 0.8rem;
+      font-weight: 500;
+      padding: 8px 10px;
+      border-radius: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .ed-item small {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      color: #6E3F24;
+      white-space: nowrap;
+    }
+
+    .ed-item.on {
+      background: #2B1D14;
+      color: #FAF7F2;
+      border-color: #2B1D14;
+    }
+
+    .ed-item.on small {
+      color: #D9A773;
+    }
+
+    @media (max-width: 960px) {
+      .ed-main {
+        grid-template-columns: 1fr;
+        padding: 12px 14px 28px;
+      }
+
+      .ed-stage {
+        height: 48vh;
+        min-height: 330px;
+      }
+
+      .ed-panel {
+        max-height: none;
+        overflow-y: visible;
+      }
+    }
+  </style>
 </head>
 <body class="ed-body">
-  <div class="fluted-backdrop" aria-hidden="true"></div>
   <header class="ed-top">
-    <a href="index.html" class="brand"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Zac<b>Furniture</b> Editor</span></a>
+    <a href="index.html" class="ed-brand">
+      <svg width="24" height="24" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+        <rect x="2" y="2" width="24" height="24" rx="6" stroke="#2B1D14" stroke-width="2"/>
+        <path d="M9 2V14H2" stroke="#8C5A32" stroke-width="2"/>
+        <path d="M19 26V14H26" stroke="#6E3F24" stroke-width="2"/>
+        <rect x="11" y="11" width="6" height="6" rx="1.5" fill="#B57C4A"/>
+      </svg>
+      <span>Zac<b>Furniture</b></span>
+      <small>Modo Editor</small>
+    </a>
+
     <div class="ed-actions">
-      <button class="btn btn-glass" id="undoBtn" title="Desfazer">↶ Desfazer</button>
-      <button class="btn btn-glass" id="redoBtn" title="Refazer">↷ Refazer</button>
-      <a class="btn btn-glass" href="index.html">Voltar sem salvar</a>
-      <button class="btn btn-sage" id="saveBtn">Salvar e voltar ao site</button>
+      <button type="button" class="ed-btn" id="undoBtn" title="Desfazer">↶ Desfazer</button>
+      <button type="button" class="ed-btn" id="redoBtn" title="Refazer">↷ Refazer</button>
+      <a class="ed-btn" href="index.html">Voltar sem salvar</a>
+      <button type="button" class="ed-btn ed-btn-primary" id="saveBtn">Salvar e voltar ao site</button>
     </div>
   </header>
 
   <main class="ed-main">
-    <div class="ed-stage" id="edStage"><span class="ed-hint" id="edHint">Toque numa peça para selecionar · arraste para mover · gire com dois dedos</span></div>
+    <div class="ed-stage-col">
+      <div class="ed-stage" id="edStage">
+        <div class="ed-stage-tools">
+          <button type="button" class="ed-stage-pill" id="centerCamBtn" title="Enquadrar móvel na tela">Enquadrar 3D</button>
+          <button type="button" class="ed-stage-pill" id="floorSnapBtn" title="Apoiar peça selecionada no piso">Apoiar no piso</button>
+        </div>
+        <span class="ed-hint" id="edHint">Toque numa peça para selecionar · arraste para mover · gire com dois dedos</span>
+      </div>
+    </div>
 
     <aside class="ed-panel">
       <section class="ed-card">
@@ -45,16 +475,25 @@
         <input class="ed-name" id="selName" aria-label="Nome da peça" />
         <div class="ed-fields" id="sizeFields"></div>
         <div class="ed-fields" id="posFields"></div>
-        <div class="ed-row">Passo: <select id="stepSel"><option value="1">1 cm</option><option value="5">5 cm</option><option value="10">10 cm</option></select>
-          <button class="ed-chip" id="dupBtn">Duplicar</button>
-          <button class="ed-chip danger" id="delBtn">Remover</button>
+        <div class="ed-row">
+          <span>Passo:</span>
+          <select id="stepSel">
+            <option value="1">1 cm</option>
+            <option value="5">5 cm</option>
+            <option value="10">10 cm</option>
+          </select>
+          <button type="button" class="ed-chip" id="rotatePartBtn" title="Alternar largura e profundidade da peça">Girar 90°</button>
+          <button type="button" class="ed-chip" id="dupBtn">Duplicar</button>
+          <button type="button" class="ed-chip danger" id="delBtn">Remover</button>
         </div>
       </section>
 
       <section class="ed-card">
         <h3>Pintar</h3>
         <div class="ed-colors" id="colors"></div>
-        <div class="ed-row"><button class="ed-chip" id="paintAllBtn">Pintar o móvel todo com a cor escolhida</button></div>
+        <div class="ed-row">
+          <button type="button" class="ed-chip" id="paintAllBtn">Pintar o móvel todo com a cor escolhida</button>
+        </div>
       </section>
 
       <section class="ed-card">
@@ -63,6 +502,7 @@
       </section>
     </aside>
   </main>
+
   <script type="module" src="./editor.js"></script>
 </body>
 </html>
