@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { boxGeo, FINISHES, PAINT_BUCKETS, createWoodTexturesFromConfig } from './shared.js';
+import { boxGeo, FINISHES, PAINT_BUCKETS, createWoodTexturesFromConfig, accMaterial, isAcc, partGeometry, rotRad } from './shared.js';
+import { matchFurniture, makeFurniture } from './furniture.js';
 import { CATALOG, specFromItem, detectCustom, parseDna, thumbSvg } from './catalog.js';
 import { computeBOM, countScrews } from './bom.js';
 import { initARAnd360 } from './ar-and-360.js';
@@ -364,7 +365,8 @@ function parseFurnitureRequest(rawText, manualDims = {}) {
     displayTitle = 'Armário Multiuso';
   }
 
-  const custom = detectCustom(text);
+  const ext = matchFurniture(text);
+  const custom = ext ? null : detectCustom(text);
   if (custom) {
     category = custom.category;
     displayTitle = custom.title;
@@ -382,7 +384,7 @@ function parseFurnitureRequest(rawText, manualDims = {}) {
     modular:         { w: 160, h: 180, d: 50 }
   };
 
-  let { w, h, d } = custom && custom.dims ? custom.dims : (defaults[category] || defaults.armario_pia);
+  let { w, h, d } = ext ? { w: ext.W, h: ext.H, d: ext.D } : custom && custom.dims ? custom.dims : (defaults[category] || defaults.armario_pia);
   let isAutoImagined = true;
 
   const nxmMatch = text.match(/(\d+[.,]?\d*)\s*(?:m|cm)?\s*[x×]\s*(\d+[.,]?\d*)/);
@@ -433,7 +435,7 @@ function parseFurnitureRequest(rawText, manualDims = {}) {
     category === 'armario_cozinha' ||
     (category === 'armario_pia' && w >= 120);
 
-  const known = Boolean(custom) || /guarda|roupeiro|closet|cozinha|aereo|bancada|pia|tanque|banheiro|lavabo|gabinete|ripado|balcao|recepcao|aparador|estante|nicho|armario|multiuso|dispensa|sapateira/.test(text);
+  const known = Boolean(custom) || Boolean(ext) || /guarda|roupeiro|closet|cozinha|aereo|bancada|pia|tanque|banheiro|lavabo|gabinete|ripado|balcao|recepcao|aparador|estante|nicho|armario|multiuso|dispensa|sapateira/.test(text);
   const opts = {
     led: /\bled\b|iluminacao|luz/.test(text) ? (/frio|branc/.test(text) ? 'frio' : /neutro/.test(text) ? 'neutro' : 'quente') : 'quente',
     divider: /divisoria/.test(text) ? Math.min(4, parseInt((text.match(/(\d+)\s*divisoria/) || [0, 1])[1], 10) || 1) : 0,
@@ -450,7 +452,7 @@ function parseFurnitureRequest(rawText, manualDims = {}) {
     suggestedFinish = 'espresso';
   }
 
-  return {
+  const specOut = {
     category,
     displayTitle,
     wCm: Math.round(w),
@@ -471,6 +473,10 @@ function parseFurnitureRequest(rawText, manualDims = {}) {
     opts,
     fallback: !known
   };
+  if (ext) {
+    return makeFurniture(ext, Math.round(w), Math.round(h), Math.round(d), { isAutoImagined, suggestedFinish, opts, fallback: false, doorCount, hasShelf });
+  }
+  return specOut;
 }
 
 function frameCameraToModel(widthUnits, heightUnits) {
@@ -1578,7 +1584,7 @@ function buildModular(spec) {
 
 /* CONSTRUTOR 9: PROJETO DO MODO EDITOR (lista de peças em cm) */
 function cfgFor(c) {
-  return FINISHES[c] || PAINT_BUCKETS.find((b) => b.id === c) || FINISHES[currentFinish];
+  return FINISHES[c] || PAINT_BUCKETS.find((b) => b.id === c) || FINISHES[currentFinish] || Object.values(FINISHES)[0];
 }
 
 function buildCustom(spec) {
@@ -1591,13 +1597,17 @@ function buildCustom(spec) {
     const pos = new THREE.Vector3(q.x / 100, q.y / 100, q.z / 100);
     const metal = q.c === 'metal';
     const stone = q.c === 'stone';
+    const acc = isAcc(q.c);
+    const fixed = metal || stone || acc;
     const mat = metal
       ? metalMat
       : stone
         ? createStonePartMaterial()
-        : createPartWoodMaterial(h < w && h < d, cfgFor(q.c));
-    const mesh = new THREE.Mesh(boxGeo(w, h, d), mat);
-    if (metal) mesh.userData.nonPaintable = true;
+        : acc
+          ? accMaterial(q.c)
+          : createPartWoodMaterial(h < w && h < d, cfgFor(q.c));
+    const mesh = new THREE.Mesh(partGeometry(q), mat);
+    if (fixed) mesh.userData.nonPaintable = true;
 
     const exOff = { x: pos.x * 0.5, y: (q.y - cy) * 0.0035, z: 0.2 + Math.abs(pos.x) * 0.15 };
     const dimsCm = { w: q.w, h: q.h, d: q.d };
@@ -1608,15 +1618,17 @@ function buildCustom(spec) {
       pv.position.set(pos.x - w / 2, pos.y, pos.z);
       mesh.position.x = w / 2;
       pv.add(mesh);
-      info = registerPart(pv, exOff, { name: q.n, dimsCm, paintable: !metal && !stone });
+      info = registerPart(pv, exOff, { name: q.n, dimsCm, paintable: !fixed });
       registerOpenable(info, { openRotY: -Math.PI * 0.54 });
     } else {
       mesh.position.copy(pos);
-      info = registerPart(mesh, exOff, { name: q.n, dimsCm, paintable: !metal && !stone });
+      if (q.r) mesh.rotation.set(...rotRad(q.r));
+      info = registerPart(mesh, exOff, { name: q.n, dimsCm, paintable: !fixed });
       if (q.t === 'gaveta') registerOpenable(info, { openOffset: new THREE.Vector3(0, 0, 0.26) });
     }
+    info.acc = q.acc || 0;
 
-    const bucket = PAINT_BUCKETS.find((b) => b.id === q.c);
+    const bucket = PAINT_BUCKETS.find((b2) => b2.id === q.c);
     if (bucket) {
       info.paintedBucketId = bucket.id;
       info.paintedColorName = bucket.short;
@@ -2683,6 +2695,13 @@ function addHardware(spec) {
    MODO EDITOR: exportar peças do modelo atual, abrir editor.html e restaurar
    ========================================================================== */
 function exportParts() {
+  if (currentSpec.category === 'custom' && currentSpec.parts && currentSpec.parts.length === animatedParts.length) {
+    return {
+      name: currentSpec.displayTitle,
+      finish: currentFinish,
+      parts: currentSpec.parts.map((q, i) => ({ ...q, c: animatedParts[i].paintedBucketId || q.c }))
+    };
+  }
   animatedParts.forEach((p) => {
     p.obj.position.copy(p.targetPos);
     p.obj.rotation.copy(p.targetRot);
@@ -2862,17 +2881,11 @@ function readHashProject() {
         .filter(Boolean)
         .map((r) => {
           const f = r.split('_');
-          return {
-            t: f[0],
-            n: decodeURIComponent(f[1] || ''),
-            w: +f[2],
-            h: +f[3],
-            d: +f[4],
-            x: +f[5],
-            y: +f[6],
-            z: +f[7],
-            c: f[8]
-          };
+          const q = { t: f[0], n: decodeURIComponent(f[1] || ''), w: +f[2], h: +f[3], d: +f[4], x: +f[5], y: +f[6], z: +f[7], c: f[8] };
+          if (f[9]) q.s = f[9];
+          if (f[10]) q.r = f[10].split('.').map(Number);
+          if (f[11]) q.acc = +f[11];
+          return q;
         });
       return { kind: 'custom', data: { name: decodeURIComponent(name || 'Projeto'), parts } };
     }
@@ -3015,7 +3028,7 @@ function encodeProject() {
       encodeURIComponent(currentSpec.displayTitle) +
       '~' +
       (currentSpec.parts || [])
-        .map((q) => [q.t, encodeURIComponent(q.n), q.w, q.h, q.d, q.x, q.y, q.z, q.c].join('_'))
+        .map((q) => [q.t, encodeURIComponent(q.n), q.w, q.h, q.d, q.x, q.y, q.z, q.c, q.s || '', q.r ? q.r.join('.') : '', q.acc || ''].join('_'))
         .join('~')
     );
   }

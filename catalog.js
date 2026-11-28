@@ -1,3 +1,4 @@
+import { FURN, FURN_GROUPS, makeFurniture } from './furniture.js';
 // Catálogo estrutural: cada modelo tem uma ESTRUTURA diferente (colunas, gavetas, nichos, portas, bases, tampos, metalon).
 // Cor/pintura NÃO conta como modelo: isso o cliente escolhe no Modo Pintor.
 // DNA: "<base><tampo>-<largura><tipo><peso>...<.>próxima coluna" (células de cima para baixo)
@@ -78,7 +79,11 @@ MT.forEach(([kind, title, w, h, d, levels, canDrawer]) => {
   })))));
 });
 
+// Os 110 móveis de marcenaria entram primeiro no catálogo
+CATALOG.unshift(...FURN.map((f) => ({ id: `F-${String(f.id).padStart(3, '0')}`, fam: f.grp, famName: FURN_GROUPS[f.grp], ext: f.id, w: f.W, h: f.H, d: f.D, name: f.name })));
+
 export function specFromItem(it) {
+  if (it.ext) { const f = FURN[it.ext - 1]; return makeFurniture(f, it.w, it.h, it.d); }
   const base = { displayTitle: it.name, wCm: it.w, hCm: it.h, dCm: it.d, doorCount: 0, hasShelf: true, hasDrawers: true, isAutoImagined: false, catalogId: it.id };
   return it.dna ? { ...base, category: 'modular', dna: it.dna } : { ...base, category: 'metalon', ...it.mt };
 }
@@ -93,7 +98,23 @@ export function parseDna(dna) {
 }
 
 // Miniatura SVG da estrutura (mostra a diferença real entre os modelos)
+const _thumbCache = new Map();
+function extThumb(it) {
+  if (_thumbCache.has(it.id)) return _thumbCache.get(it.id);
+  const f = FURN[it.ext - 1], ps = makeFurniture(f, f.W, f.H, f.D).parts.slice().sort((a, b) => a.z - b.z);
+  const x0 = Math.min(...ps.map((q) => q.x - q.w / 2)), x1 = Math.max(...ps.map((q) => q.x + q.w / 2)), y1 = Math.max(...ps.map((q) => q.y + q.h / 2));
+  const sc = 110 / Math.max(x1 - x0, y1), o = 4;
+  const g = ps.map((q) => {
+    const k = q.t === 'porta' || q.t === 'gaveta' ? 't-face' : q.t === 'acc' ? 't-line' : q.t === 'tubo' || q.c === 'metal' ? 't-leg' : 't-body';
+    return `<rect x="${(o + (q.x - q.w / 2 - x0) * sc).toFixed(1)}" y="${(o + (y1 - q.y - q.h / 2) * sc).toFixed(1)}" width="${Math.max(0.8, q.w * sc).toFixed(1)}" height="${Math.max(0.8, q.h * sc).toFixed(1)}" class="${k}"/>`;
+  }).join('');
+  const out = `<svg viewBox="0 0 ${((x1 - x0) * sc + 2 * o).toFixed(0)} ${(y1 * sc + 2 * o).toFixed(0)}" class="thumb" aria-hidden="true">${g}</svg>`;
+  _thumbCache.set(it.id, out);
+  return out;
+}
+
 export function thumbSvg(it) {
+  if (it.ext) return extThumb(it);
   const sc = 110 / Math.max(it.w, it.h), W = it.w * sc, H = it.h * sc, o = 4;
   let g = '';
   if (it.dna) {

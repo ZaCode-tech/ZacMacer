@@ -206,3 +206,36 @@ export function createWoodTexturesFromConfig(cfg) {
   return { map, bumpMap };
 }
 
+
+
+/* ---------- Materiais dos acessórios (vidro, espelho, metais, LED, palhinha...) ---------- */
+// chave: [cor, rugosidade, metalico, opacidade, emissivo?]
+const AM = {
+  mirror: [0xdfe6ea, 0.03, 1, 1], mirror_bronze: [0xb08a6a, 0.03, 1, 1], mirror_smoke: [0x6d747a, 0.03, 1, 1],
+  glass: [0xcfe6ee, 0.05, 0, 0.28], glass_clear: [0xe8f4f2, 0.04, 0, 0.22], glass_bronze: [0x8a6b4f, 0.05, 0.6, 0.45],
+  glass_silver: [0xb9c4cc, 0.05, 0.8, 0.45], glass_smoke: [0x59626a, 0.05, 0.4, 0.5], glass_ribbed: [0xcfe6ee, 0.25, 0, 0.4],
+  glass_white: [0xf4f1ea, 0.1, 0, 0.96], glass_black: [0x151515, 0.1, 0, 0.96], glass_frost: [0xdfe9ec, 0.75, 0, 0.62],
+  inox: [0xc9ccd0, 0.3, 0.9, 1], alu: [0xb8bcc2, 0.35, 0.85, 1], black: [0x1a1a1c, 0.5, 0.5, 1], brass: [0xb58f4a, 0.3, 0.9, 1],
+  gold: [0xd2b04c, 0.25, 0.95, 1], bronze: [0x7a5a3a, 0.35, 0.85, 1], iron: [0x2a2b2e, 0.55, 0.7, 1],
+  wicker: [0xc9a56a, 0.85, 0, 1], fabric: [0xcdbfa8, 0.95, 0, 1], fabric_dark: [0x4a4a50, 0.95, 0, 1], leather: [0x6b3f2a, 0.6, 0, 1],
+  rubber: [0x222426, 0.9, 0, 1], felt: [0x3d4a6b, 0.95, 0, 1], plastic: [0xe9e6df, 0.5, 0, 1], white: [0xf2efe8, 0.5, 0, 1],
+  mesh: [0x2a2b2e, 0.5, 0.8, 0.6], led_warm: [0xffd27d, 0.4, 0, 1, 0xffa733], led_neutral: [0xfff4e0, 0.4, 0, 1, 0xffe9c4], led_cool: [0xe8f4ff, 0.4, 0, 1, 0x9fd0ff]
+};
+export const ACC_MAT_KEYS = Object.keys(AM);
+export const isAcc = (c) => Object.prototype.hasOwnProperty.call(AM, c);
+const _am = new Map();
+export function accMaterial(key) {
+  if (_am.has(key)) return _am.get(key);
+  const [color, rough, metal, op, em] = AM[key];
+  const m = new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal, transparent: op < 1, opacity: op, side: op < 1 ? THREE.DoubleSide : THREE.FrontSide, depthWrite: op >= 0.9 });
+  if (em) { m.emissive.setHex(em); m.emissiveIntensity = 0.9; }
+  m.userData.isAccessory = true;
+  _am.set(key, m);
+  return m;
+}
+// Geometria de uma peça do projeto: caixa ('b') ou cilindro ('c': L = diâmetro, A = comprimento)
+export function partGeometry(q) {
+  if (q.s === 'c') { const g = new THREE.CylinderGeometry(q.w / 200, q.w / 200, q.h / 100, 24); g.parameters = { ...g.parameters, width: q.w / 100, height: q.h / 100, depth: q.w / 100 }; return g; }
+  return boxGeo(q.w / 100, q.h / 100, q.d / 100);
+}
+export const rotRad = (r) => (r || [0, 0, 0]).map((v) => (v * Math.PI) / 180);

@@ -55,8 +55,9 @@ export function computeBOM(spec, parts) {
     add('Parafuso 4,0 × 40 mm (caixa da gaveta)', drawers.length * 8);
   }
 
+  const handleAcc = parts.filter((p) => p.acc === 27).length;
   const handles = doors.length + drawers.length + flaps.length + sliders.length;
-  add('Puxador', handles);
+  add('Puxador', Math.max(0, handles - handleAcc));
   add('Parafuso M4 × 40 mm (puxador, painel 22 mm + 15 mm)', handles * 2);
 
   if (!['balcao_ripado'].includes(spec.category)) {
@@ -69,6 +70,9 @@ export function computeBOM(spec, parts) {
     add('Pino de aço 1,2 × 25 mm (ripas) + cola PU', pins, 'um a cada 20 cm de ripa');
   }
   if (find(/LED/).length) add('Fonte 12 V + fita LED (perfil de alumínio)', 1);
+  const accs = {};
+  parts.filter((p) => p.acc).forEach((p) => { accs[p.name] = (accs[p.name] || 0) + 1; });
+  Object.entries(accs).forEach(([nm, q]) => add(nm, q, 'acessório'));
   const tubes = find(/^Tubo/);
   if (tubes.length) {
     const g = {};
